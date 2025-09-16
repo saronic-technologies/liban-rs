@@ -18,7 +18,7 @@
 //!
 //! ```rust
 //! use std::convert::TryFrom;
-//! use liban::{AnppProtocol, PacketId, DeviceInformation};
+//! use liban::{AnppProtocol, PacketId, DeviceInformationPacket};
 //!
 //! // Create a request packet
 //! let request_packet = AnppProtocol::create_packet(
@@ -32,7 +32,7 @@
 //! // Example of parsing using TryFrom
 //! // In real usage you'd get data from your transport
 //! // let (packet_id, data) = AnppProtocol::parse_packet(&response_bytes)?;
-//! // let device_info = DeviceInformation::try_from(data.as_slice())?;
+//! // let device_info = DeviceInformationPacket::try_from(data.as_slice())?;
 //!
 //! // For demonstration without actual network data:
 //! let packet_id = PacketId::DeviceInformation.as_u8();
@@ -48,32 +48,38 @@ pub mod packet;
 pub mod protocol;
 
 pub use error::{AnError, Result};
-pub use packet::{
+pub use packet::PacketId;
+pub use packet::system::{
     AcknowledgePacket,
     BootModePacket,
-    DeviceInformation,
-    FilterOptionsPacket,
-    FilterStatus,
-    InstallationAlignmentPacket,
+    DeviceInformationPacket,
     IpConfigurationPacket,
+    RequestPacket,
+    ResetPacket,
+    RestoreFactorySettingsPacket,
+};
+pub use packet::state::{
+    StatusPacket,
+    SystemStatePacket,
+    UnixTimePacket,
+};
+pub use packet::flags::{
+    FilterStatusFlags,
+    SystemStatusFlags,
+};
+pub use packet::config::{
+    FilterOptionsPacket,
+    InstallationAlignmentPacket,
     IpDataportEntry,
     IpDataportMode,
     IpDataportsConfigurationPacket,
     OdometerConfigurationPacket,
     OffsetVector,
-    PacketId,
     PacketPeriodEntry,
     PacketTimerPeriodPacket,
     PacketsPeriodPacket,
     ReferencePointOffsetsPacket,
-    RequestPacket,
-    ResetPacket,
-    RestoreFactorySettingsPacket,
     SetZeroOrientationAlignmentPacket,
-    StatusPacket,
-    SystemState,
-    SystemStatus,
-    UnixTimePacket,
     VehicleType,
 };
 pub use protocol::AnppProtocol;

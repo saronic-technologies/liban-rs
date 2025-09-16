@@ -5,11 +5,16 @@
 
 use std::convert::{TryFrom, TryInto};
 use liban::{AnError, Result};
-use liban::packet::{
-    AcknowledgePacket, DeviceInformation, FilterOptionsPacket,
-    InstallationAlignmentPacket, IpDataportsConfigurationPacket, OdometerConfigurationPacket,
-    PacketId, PacketTimerPeriodPacket, ReferencePointOffsetsPacket, ResetPacket,
-    RestoreFactorySettingsPacket, StatusPacket, SystemState, UnixTimePacket,
+use liban::packet::PacketId;
+use liban::packet::system::{
+    AcknowledgePacket, DeviceInformationPacket, ResetPacket, RestoreFactorySettingsPacket,
+};
+use liban::packet::state::{
+    StatusPacket, SystemStatePacket, UnixTimePacket,
+};
+use liban::packet::config::{
+    FilterOptionsPacket, InstallationAlignmentPacket, IpDataportsConfigurationPacket,
+    OdometerConfigurationPacket, PacketTimerPeriodPacket, ReferencePointOffsetsPacket,
 };
 use liban::protocol::AnppProtocol;
 use bytes::Buf;
@@ -195,12 +200,12 @@ impl BoreasInterface {
     }
 
     /// Get device information
-    pub async fn get_device_information(&mut self) -> Result<DeviceInformation> {
+    pub async fn get_device_information(&mut self) -> Result<DeviceInformationPacket> {
         self.request_and_parse(PacketId::DeviceInformation).await
     }
 
     /// Get system state information
-    pub async fn get_system_state(&mut self) -> Result<SystemState> {
+    pub async fn get_system_state(&mut self) -> Result<SystemStatePacket> {
         self.request_and_parse(PacketId::SystemState).await
     }
 
