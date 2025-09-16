@@ -1,29 +1,31 @@
 use crate::error::{AnError, Result};
 use bytes::{Buf, BufMut, BytesMut};
+use crc::{Crc, Algorithm};
 
 /// Advanced Navigation Packet Protocol implementation
 pub struct AnppProtocol;
 
 impl AnppProtocol {
+    /// CRC16-CCITT algorithm definition
+    const CRC16_CCITT: Algorithm<u16> = Algorithm {
+        width: 16,
+        poly: 0x1021,
+        init: 0xFFFF,
+        refin: false,
+        refout: false,
+        xorout: 0x0000,
+        check: 0x29B1,
+        residue: 0x0000,
+    };
+
+    /// CRC16-CCITT calculator instance
+    const CRC16: Crc<u16> = Crc::<u16>::new(&Self::CRC16_CCITT);
+
     /// Calculate CRC16-CCITT checksum for packet data
     ///
     /// Uses polynomial 0x1021 with initial value 0xFFFF
     pub fn calculate_crc16(data: &[u8]) -> u16 {
-        let mut crc: u16 = 0xFFFF;
-        let polynomial: u16 = 0x1021;
-
-        for &byte in data {
-            crc ^= (byte as u16) << 8;
-            for _ in 0..8 {
-                if crc & 0x8000 != 0 {
-                    crc = ((crc << 1) ^ polynomial) & 0xFFFF;
-                } else {
-                    crc = (crc << 1) & 0xFFFF;
-                }
-            }
-        }
-
-        crc
+        Self::CRC16.checksum(data)
     }
 
     /// Create an ANPP packet with proper header and checksum
@@ -172,5 +174,48 @@ impl AnppProtocol {
             ));
         }
         Ok(packet[2])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_crc16_calculation() {
+        // Test with empty data
+        let crc_empty = AnppProtocol::calculate_crc16(&[]);
+        assert_eq!(crc_empty, 0xFFFF);
+
+        // Test with known data
+        let test_data = b"123456789";
+        let crc = AnppProtocol::calculate_crc16(test_data);
+        // CRC16-CCITT(false) of "123456789" should be 0x29B1
+        assert_eq!(crc, 0x29B1);
+    }
+
+    #[test]
+    fn test_packet_creation_and_parsing() {
+        let test_data = vec![0x01, 0x02, 0x03, 0x04];
+        let packet_id = 20;
+
+        // Create a packet
+        let packet = AnppProtocol::create_packet(packet_id, &test_data).unwrap();
+
+        // Parse it back
+        let (parsed_id, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
+
+        assert_eq!(parsed_id, packet_id);
+        assert_eq!(parsed_data, test_data);
+    }
+
+    #[test]
+    fn test_request_packet_creation() {
+        let request_packet = AnppProtocol::create_request_packet(3).unwrap();
+
+        // Should be a request packet (ID 1) containing the requested packet ID
+        let (packet_id, data) = AnppProtocol::parse_packet(&request_packet).unwrap();
+        assert_eq!(packet_id, 1); // Request packet ID
+        assert_eq!(data, vec![3]); // Requested packet ID
     }
 }
