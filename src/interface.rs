@@ -1,0 +1,363 @@
+use crate::error::{AnError, Result};
+use crate::packet::{
+    AcknowledgePacket, AnppPacket, DeviceInformation, FilterOptionsPacket, FormattedTimePacket,
+    InstallationAlignmentPacket, IpDataportsConfigurationPacket, OdometerConfigurationPacket,
+    PacketId, PacketTimerPeriodPacket, ReferencePointOffsetsPacket, ResetPacket,
+    RestoreFactorySettingsPacket, StatusPacket, SystemState, UnixTimePacket,
+};
+use crate::protocol::AnppProtocol;
+use bytes::Buf;
+use std::net::SocketAddr;
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio::time::{timeout, Duration as TokioDuration};
+use tracing::{debug, info, warn};
+
+/// Interface for communicating with Advanced Navigation Boreas D90 devices
+pub struct BoreasInterface {
+    stream: Option<TcpStream>,
+    address: SocketAddr,
+    timeout: Duration,
+    connected: bool,
+}
+
+impl BoreasInterface {
+    /// Create a new Boreas interface
+    ///
+    /// # Arguments
+    /// * `host` - Hostname or IP address of the Boreas device
+    /// * `port` - TCP port number (typically 16718 for Boreas D90)
+    /// * `timeout_duration` - Timeout for network operations
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use liban::BoreasInterface;
+    /// # use std::time::Duration;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut interface = BoreasInterface::new(
+    ///     "192.168.1.100",
+    ///     16718,
+    ///     Duration::from_secs(5)
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn new(host: &str, port: u16, timeout_duration: Duration) -> Result<Self> {
+        let address: SocketAddr = format!("{}:{}", host, port).parse().map_err(|e| {
+            AnError::Network(std::io::Error::new(std::io::ErrorKind::InvalidInput, e))
+        })?;
+
+        let mut interface = Self {
+            stream: None,
+            address,
+            timeout: timeout_duration,
+            connected: false,
+        };
+
+        interface.connect().await?;
+        Ok(interface)
+    }
+
+    /// Establish TCP connection to the Boreas device
+    pub async fn connect(&mut self) -> Result<()> {
+        info!("Connecting to Boreas device at {}", self.address);
+
+        let stream = timeout(
+            TokioDuration::from(self.timeout),
+            TcpStream::connect(self.address),
+        )
+        .await
+        .map_err(|_| AnError::Timeout)?
+        .map_err(AnError::Network)?;
+
+        self.stream = Some(stream);
+        self.connected = true;
+
+        info!("Successfully connected to Boreas device");
+        Ok(())
+    }
+
+    /// Disconnect from the Boreas device
+    pub async fn disconnect(&mut self) -> Result<()> {
+        if let Some(mut stream) = self.stream.take() {
+            info!("Disconnecting from Boreas device");
+            stream.shutdown().await.map_err(AnError::Network)?;
+        }
+        self.connected = false;
+        Ok(())
+    }
+
+    /// Check if connected to the device
+    pub fn is_connected(&self) -> bool {
+        self.connected
+    }
+
+    /// Send a raw packet and receive response
+    pub async fn send_packet(&mut self, packet_id: u8, data: &[u8]) -> Result<(u8, Vec<u8>)> {
+        if !self.connected {
+            return Err(AnError::NotConnected);
+        }
+
+        // Check for unimplemented packet IDs 24-89
+        if let Option::None = PacketId::from_u8(packet_id) {
+            warn!(
+                "Packet ID {} is not implemented or does not exist",
+                packet_id
+            );
+            return Err(AnError::UnsupportedPacketId(packet_id));
+        }
+
+        let stream = self.stream.as_mut().unwrap();
+
+        // Create and send packet
+        let packet = AnppProtocol::create_packet(packet_id, data)?;
+
+        debug!("Sending {} bytes to Boreas device", packet.len());
+        timeout(TokioDuration::from(self.timeout), stream.write_all(&packet))
+            .await
+            .map_err(|_| AnError::Timeout)?
+            .map_err(AnError::Network)?;
+
+        // Read response
+        let mut response_buffer = vec![0u8; 1024];
+        let bytes_read = timeout(
+            TokioDuration::from(self.timeout),
+            stream.read(&mut response_buffer),
+        )
+        .await
+        .map_err(|_| AnError::Timeout)?
+        .map_err(AnError::Network)?;
+
+        if bytes_read == 0 {
+            warn!("No response received from device");
+            return Err(AnError::Device("No response from device".to_string()));
+        }
+
+        response_buffer.truncate(bytes_read);
+        debug!("Received {} bytes from Boreas device", bytes_read);
+
+        // Parse response packet
+        AnppProtocol::parse_packet(&response_buffer)
+    }
+
+    /// Request a specific packet from the device
+    pub async fn request_packet(&mut self, packet_id: PacketId) -> Result<(u8, Vec<u8>)> {
+        let request_data = vec![packet_id.as_u8()];
+        self.send_packet(PacketId::Request.as_u8(), &request_data)
+            .await
+    }
+
+    /// Generic helper to request a packet and parse the response
+    async fn request_and_parse<T: AnppPacket>(&mut self, packet_id: PacketId) -> Result<T> {
+        let (response_id, data) = self.request_packet(packet_id).await?;
+
+        if response_id != packet_id.as_u8() {
+            return Err(AnError::Device(format!(
+                "Unexpected response packet ID: expected {}, got {}",
+                packet_id.as_u8(),
+                response_id
+            )));
+        }
+
+        T::from_bytes(&data)
+    }
+
+    /// Generic helper to send a packet and parse acknowledge response
+    async fn send_and_acknowledge<T: AnppPacket>(
+        &mut self,
+        packet_id: PacketId,
+        config: &T,
+    ) -> Result<AcknowledgePacket> {
+        let data = config.to_bytes()?;
+
+        let (response_id, response_data) = self.send_packet(packet_id.as_u8(), &data).await?;
+
+        if response_id != PacketId::Acknowledge.as_u8() {
+            return Err(AnError::Device(
+                "Expected acknowledge packet for configuration".to_string(),
+            ));
+        }
+
+        AcknowledgePacket::from_bytes(&response_data)
+    }
+
+    /// Get device information
+    pub async fn get_device_information(&mut self) -> Result<DeviceInformation> {
+        self.request_and_parse(PacketId::DeviceInformation).await
+    }
+
+    /// Get system state information
+    pub async fn get_system_state(&mut self) -> Result<SystemState> {
+        self.request_and_parse(PacketId::SystemState).await
+    }
+
+    /// Get status information
+    pub async fn get_status(&mut self) -> Result<StatusPacket> {
+        self.request_and_parse(PacketId::Status).await
+    }
+
+    /// Reset the device
+    pub async fn reset_device(&mut self) -> Result<()> {
+        info!("Resetting Boreas device");
+
+        let reset_packet = ResetPacket::new();
+        let packet_data = reset_packet.to_bytes()?;
+        self.send_packet(PacketId::Reset.as_u8(), &packet_data)
+            .await?;
+
+        // Device will disconnect after reset
+        self.connected = false;
+        self.stream = None;
+
+        // Wait for device to reboot
+        tokio::time::sleep(Duration::from_secs(30)).await;
+
+        info!("Device reset completed");
+        Ok(())
+    }
+
+    /// Restore factory settings
+    ///
+    /// Note: A Factory Reset will re-enable the DHCP Client and lose any static IP address settings.
+    pub async fn restore_factory_settings(&mut self) -> Result<()> {
+        info!("Restoring factory settings - this will re-enable DHCP and lose static IP settings");
+
+        let factory_reset_packet = RestoreFactorySettingsPacket::new();
+        let packet_data = factory_reset_packet.to_bytes()?;
+        self.send_packet(PacketId::RestoreFactorySettings.as_u8(), &packet_data)
+            .await?;
+
+        // Device will typically reboot after factory reset
+        self.connected = false;
+        self.stream = None;
+
+        info!("Factory settings restored");
+        Ok(())
+    }
+
+    /// Configure IP settings
+    pub async fn configure_ip(&mut self, ip_config: &[u8]) -> Result<AcknowledgePacket> {
+        let (response_id, data) = self
+            .send_packet(PacketId::IpConfiguration.as_u8(), ip_config)
+            .await?;
+
+        if response_id != PacketId::Acknowledge.as_u8() {
+            return Err(AnError::Device(
+                "Expected acknowledge packet for IP configuration".to_string(),
+            ));
+        }
+
+        if data.len() < 4 {
+            return Err(AnError::InvalidPacket(
+                "Acknowledge packet too short".to_string(),
+            ));
+        }
+
+        let mut buf = &data[..];
+        Ok(AcknowledgePacket {
+            packet_id: buf.get_u8(),
+            packet_crc: buf.get_u16_le(),
+            result: buf.get_u8(),
+        })
+    }
+
+    /// Set configuration parameter
+    pub async fn set_configuration(&mut self, config_data: &[u8]) -> Result<AcknowledgePacket> {
+        // This would send configuration commands specific to Boreas D90
+        // The actual packet format would depend on the specific configuration being set
+        let (response_id, data) = self.send_packet(20, config_data).await?; // Using system state packet ID as example
+
+        if response_id != PacketId::Acknowledge.as_u8() {
+            return Err(AnError::Device(
+                "Expected acknowledge packet for configuration".to_string(),
+            ));
+        }
+
+        if data.len() < 4 {
+            return Err(AnError::InvalidPacket(
+                "Acknowledge packet too short".to_string(),
+            ));
+        }
+
+        let mut buf = &data[..];
+        Ok(AcknowledgePacket {
+            packet_id: buf.get_u8(),
+            packet_crc: buf.get_u16_le(),
+            result: buf.get_u8(),
+        })
+    }
+
+    /// Get Unix time
+    pub async fn get_unix_time(&mut self) -> Result<UnixTimePacket> {
+        self.request_and_parse(PacketId::UnixTime).await
+    }
+
+    /// Get formatted time
+    pub async fn get_formatted_time(&mut self) -> Result<FormattedTimePacket> {
+        self.request_and_parse(PacketId::FormattedTime).await
+    }
+
+    // Configuration packets (180-203)
+    /// Get packet timer period configuration
+    pub async fn get_packet_timer_period(&mut self) -> Result<PacketTimerPeriodPacket> {
+        self.request_and_parse(PacketId::PacketTimerPeriod).await
+    }
+
+    /// Set packet timer period configuration
+    pub async fn set_packet_timer_period(
+        &mut self,
+        config: &PacketTimerPeriodPacket,
+    ) -> Result<AcknowledgePacket> {
+        self.send_and_acknowledge(PacketId::PacketTimerPeriod, config)
+            .await
+    }
+
+    /// Get installation alignment configuration
+    pub async fn get_installation_alignment(&mut self) -> Result<InstallationAlignmentPacket> {
+        self.request_and_parse(PacketId::InstallationAlignment)
+            .await
+    }
+
+    /// Get filter options configuration
+    pub async fn get_filter_options(&mut self) -> Result<FilterOptionsPacket> {
+        self.request_and_parse(PacketId::FilterOptions).await
+    }
+
+    /// Get odometer configuration
+    pub async fn get_odometer_configuration(&mut self) -> Result<OdometerConfigurationPacket> {
+        self.request_and_parse(PacketId::OdometerConfiguration)
+            .await
+    }
+
+    /// Get reference point offsets configuration
+    pub async fn get_reference_point_offsets(&mut self) -> Result<ReferencePointOffsetsPacket> {
+        self.request_and_parse(PacketId::ReferencePointOffsets)
+            .await
+    }
+
+    /// Get IP dataports configuration
+    pub async fn get_ip_dataports_configuration(
+        &mut self,
+    ) -> Result<IpDataportsConfigurationPacket> {
+        self.request_and_parse(PacketId::IpDataportsConfiguration)
+            .await
+    }
+
+    // Generic packet request for other packet types
+    /// Generic function to request any packet type by ID
+    pub async fn request_generic_packet(&mut self, packet_id: PacketId) -> Result<(u8, Vec<u8>)> {
+        self.request_packet(packet_id).await
+    }
+}
+
+impl Drop for BoreasInterface {
+    fn drop(&mut self) {
+        if self.connected {
+            // Best effort disconnect
+            if let Some(mut stream) = self.stream.take() {
+                let _ = futures::executor::block_on(stream.shutdown());
+            }
+        }
+    }
+}
