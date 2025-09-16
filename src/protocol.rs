@@ -1,6 +1,5 @@
 use crate::error::{AnError, Result};
 use bytes::{Buf, BufMut, BytesMut};
-use tracing::debug;
 
 /// Advanced Navigation Packet Protocol implementation
 pub struct AnppProtocol;
@@ -61,10 +60,7 @@ impl AnppProtocol {
         packet.extend_from_slice(&crc_bytes);
         packet.extend_from_slice(data);
 
-        debug!(
-            "Created ANPP packet - ID: {}, Length: {}, CRC: 0x{:04X}",
-            packet_id, length, crc
-        );
+        // Packet created successfully
 
         Ok(packet)
     }
@@ -126,10 +122,7 @@ impl AnppProtocol {
             return Err(AnError::InvalidChecksum);
         }
 
-        debug!(
-            "Parsed ANPP packet - ID: {}, Length: {}, CRC: 0x{:04X}",
-            packet_id, length, calculated_crc
-        );
+        // Packet parsed successfully
 
         Ok((packet_id, data))
     }

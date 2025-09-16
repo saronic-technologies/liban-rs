@@ -1,11 +1,17 @@
-use crate::error::{AnError, Result};
-use crate::packet::{
-    AcknowledgePacket, AnppPacket, DeviceInformation, FilterOptionsPacket, FormattedTimePacket,
+//! Example implementation of a TCP interface for Advanced Navigation Boreas D90
+//!
+//! This example demonstrates how to build an I/O-aware interface on top of the
+//! sans-io liban core library for communicating with Boreas D90 devices.
+
+use std::convert::{TryFrom, TryInto};
+use liban::{AnError, Result};
+use liban::packet::{
+    AcknowledgePacket, DeviceInformation, FilterOptionsPacket,
     InstallationAlignmentPacket, IpDataportsConfigurationPacket, OdometerConfigurationPacket,
     PacketId, PacketTimerPeriodPacket, ReferencePointOffsetsPacket, ResetPacket,
     RestoreFactorySettingsPacket, StatusPacket, SystemState, UnixTimePacket,
 };
-use crate::protocol::AnppProtocol;
+use liban::protocol::AnppProtocol;
 use bytes::Buf;
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -14,7 +20,7 @@ use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration as TokioDuration};
 use tracing::{debug, info, warn};
 
-/// Interface for communicating with Advanced Navigation Boreas D90 devices
+/// Example TCP interface for communicating with Advanced Navigation Boreas D90 devices
 pub struct BoreasInterface {
     stream: Option<TcpStream>,
     address: SocketAddr,
@@ -32,7 +38,7 @@ impl BoreasInterface {
     ///
     /// # Example
     /// ```rust,no_run
-    /// # use liban::BoreasInterface;
+    /// # use boreas_interface::BoreasInterface;
     /// # use std::time::Duration;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let mut interface = BoreasInterface::new(
@@ -110,7 +116,7 @@ impl BoreasInterface {
 
         let stream = self.stream.as_mut().unwrap();
 
-        // Create and send packet
+        // Create and send packet using the sans-io protocol
         let packet = AnppProtocol::create_packet(packet_id, data)?;
 
         debug!("Sending {} bytes to Boreas device", packet.len());
@@ -137,7 +143,7 @@ impl BoreasInterface {
         response_buffer.truncate(bytes_read);
         debug!("Received {} bytes from Boreas device", bytes_read);
 
-        // Parse response packet
+        // Parse response packet using the sans-io protocol
         AnppProtocol::parse_packet(&response_buffer)
     }
 
@@ -149,7 +155,10 @@ impl BoreasInterface {
     }
 
     /// Generic helper to request a packet and parse the response
-    async fn request_and_parse<T: AnppPacket>(&mut self, packet_id: PacketId) -> Result<T> {
+    async fn request_and_parse<T>(&mut self, packet_id: PacketId) -> Result<T>
+    where
+        T: TryFrom<Vec<u8>, Error = AnError>,
+    {
         let (response_id, data) = self.request_packet(packet_id).await?;
 
         if response_id != packet_id.as_u8() {
@@ -160,16 +169,19 @@ impl BoreasInterface {
             )));
         }
 
-        T::from_bytes(&data)
+        T::try_from(data)
     }
 
     /// Generic helper to send a packet and parse acknowledge response
-    async fn send_and_acknowledge<T: AnppPacket>(
+    async fn send_and_acknowledge<T>(
         &mut self,
         packet_id: PacketId,
-        config: &T,
-    ) -> Result<AcknowledgePacket> {
-        let data = config.to_bytes()?;
+        config: T,
+    ) -> Result<AcknowledgePacket>
+    where
+        T: TryInto<Vec<u8>, Error = AnError>,
+    {
+        let data: Vec<u8> = config.try_into()?;
 
         let (response_id, response_data) = self.send_packet(packet_id.as_u8(), &data).await?;
 
@@ -179,7 +191,7 @@ impl BoreasInterface {
             ));
         }
 
-        AcknowledgePacket::from_bytes(&response_data)
+        AcknowledgePacket::try_from(response_data)
     }
 
     /// Get device information
@@ -202,7 +214,7 @@ impl BoreasInterface {
         info!("Resetting Boreas device");
 
         let reset_packet = ResetPacket::new();
-        let packet_data = reset_packet.to_bytes()?;
+        let packet_data: Vec<u8> = reset_packet.try_into()?;
         self.send_packet(PacketId::Reset.as_u8(), &packet_data)
             .await?;
 
@@ -224,7 +236,7 @@ impl BoreasInterface {
         info!("Restoring factory settings - this will re-enable DHCP and lose static IP settings");
 
         let factory_reset_packet = RestoreFactorySettingsPacket::new();
-        let packet_data = factory_reset_packet.to_bytes()?;
+        let packet_data: Vec<u8> = factory_reset_packet.try_into()?;
         self.send_packet(PacketId::RestoreFactorySettings.as_u8(), &packet_data)
             .await?;
 
@@ -293,11 +305,6 @@ impl BoreasInterface {
         self.request_and_parse(PacketId::UnixTime).await
     }
 
-    /// Get formatted time
-    pub async fn get_formatted_time(&mut self) -> Result<FormattedTimePacket> {
-        self.request_and_parse(PacketId::FormattedTime).await
-    }
-
     // Configuration packets (180-203)
     /// Get packet timer period configuration
     pub async fn get_packet_timer_period(&mut self) -> Result<PacketTimerPeriodPacket> {
@@ -307,7 +314,7 @@ impl BoreasInterface {
     /// Set packet timer period configuration
     pub async fn set_packet_timer_period(
         &mut self,
-        config: &PacketTimerPeriodPacket,
+        config: PacketTimerPeriodPacket,
     ) -> Result<AcknowledgePacket> {
         self.send_and_acknowledge(PacketId::PacketTimerPeriod, config)
             .await
@@ -360,4 +367,40 @@ impl Drop for BoreasInterface {
             }
         }
     }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
+    // Example usage of the BoreasInterface
+    let mut interface = BoreasInterface::new(
+        "192.168.0.42",
+        16720,
+        Duration::from_secs(5)
+    ).await?;
+
+    // Get device information
+    match interface.get_device_information().await {
+        Ok(device_info) => {
+            println!("Device ID: {}", device_info.device_id);
+            println!("Hardware Revision: {}", device_info.hardware_revision);
+            println!("Software Version: {}", device_info.software_version);
+        }
+        Err(e) => eprintln!("Failed to get device information: {}", e),
+    }
+
+    // Get system state
+    match interface.get_system_state().await {
+        Ok(system_state) => {
+            println!("System state: {:?}", system_state);
+        }
+        Err(e) => eprintln!("Failed to get system state: {}", e),
+    }
+
+    // Disconnect
+    interface.disconnect().await?;
+
+    Ok(())
 }

@@ -1,56 +1,59 @@
-//! # liban - Advanced Navigation Packet Protocol Library
+//! # liban - Advanced Navigation Packet Protocol Library (Sans-IO)
 //!
-//! A Rust library for communicating with Advanced Navigation devices using the
+//! A sans-io Rust library for working with Advanced Navigation devices using the
 //! Advanced Navigation Packet Protocol (ANPP), with specific support for the Boreas D90.
+//!
+//! This library provides the core protocol implementation without any I/O operations,
+//! making it suitable for use in various environments (async, sync, embedded, etc.).
 //!
 //! ## Features
 //!
 //! - Full ANPP protocol implementation with CRC16-CCITT validation
-//! - Asynchronous TCP communication
-//! - Type-safe packet handling
+//! - Sans-IO design - no built-in networking
+//! - Type-safe packet handling and serialization
 //! - Comprehensive error handling
-//! - Built-in timeout and connection management
+//! - Zero-copy packet parsing where possible
 //!
 //! ## Example Usage
 //!
-//! ```rust,no_run
-//! use liban::{BoreasInterface, PacketId};
-//! use std::time::Duration;
+//! ```rust
+//! use std::convert::TryFrom;
+//! use liban::{AnppProtocol, PacketId, DeviceInformation};
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut interface = BoreasInterface::new(
-//!         "192.168.1.100",
-//!         16718,
-//!         Duration::from_secs(5)
-//!     ).await?;
+//! // Create a request packet
+//! let request_packet = AnppProtocol::create_packet(
+//!     PacketId::Request.as_u8(),
+//!     &[PacketId::DeviceInformation.as_u8()]
+//! )?;
 //!
-//!     let device_info = interface.get_device_information().await?;
-//!     println!("Device ID: {}", device_info.device_id);
+//! // The request packet is ready to send over your chosen transport
+//! assert!(!request_packet.is_empty());
 //!
-//!     interface.disconnect().await?;
-//!     Ok(())
-//! }
+//! // Example of parsing using TryFrom
+//! // In real usage you'd get data from your transport
+//! // let (packet_id, data) = AnppProtocol::parse_packet(&response_bytes)?;
+//! // let device_info = DeviceInformation::try_from(data.as_slice())?;
+//!
+//! // For demonstration without actual network data:
+//! let packet_id = PacketId::DeviceInformation.as_u8();
+//! println!("Would parse packet with ID: {}", packet_id);
+//!
+//! # Ok::<(), liban::AnError>(())
 //! ```
+//!
+//! See the `examples/` directory for complete I/O implementations including TCP.
 
 pub mod error;
-pub mod interface;
 pub mod packet;
 pub mod protocol;
 
 pub use error::{AnError, Result};
-pub use interface::BoreasInterface;
 pub use packet::{
     AcknowledgePacket,
-    // Core traits
-    AnppPacket,
     BootModePacket,
-
     DeviceInformation,
     FilterOptionsPacket,
     FilterStatus,
-    FormattedTimePacket,
-
     InstallationAlignmentPacket,
     IpConfigurationPacket,
     IpDataportEntry,
@@ -58,25 +61,18 @@ pub use packet::{
     IpDataportsConfigurationPacket,
     OdometerConfigurationPacket,
     OffsetVector,
-    // Core types
     PacketId,
     PacketPeriodEntry,
-    // Configuration packets (180-203)
     PacketTimerPeriodPacket,
     PacketsPeriodPacket,
     ReferencePointOffsetsPacket,
-    // System packets (0-14)
     RequestPacket,
     ResetPacket,
     RestoreFactorySettingsPacket,
-    SerialPortPassthroughPacket,
     SetZeroOrientationAlignmentPacket,
     StatusPacket,
-
-    SubcomponentInformationPacket,
     SystemState,
     SystemStatus,
-    // Time packets (20-23)
     UnixTimePacket,
     VehicleType,
 };
