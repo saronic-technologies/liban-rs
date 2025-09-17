@@ -1,5 +1,5 @@
 use crate::error::{AnError, Result};
-use binrw::{BinRead, BinWrite, binrw};
+use binrw::{BinRead, BinWrite};
 use super::impl_binrw_packet_conversions;
 
 /// Configuration Packets (180-203)
@@ -15,16 +15,31 @@ pub struct PacketTimerPeriodPacket {
 
 impl_binrw_packet_conversions!(PacketTimerPeriodPacket);
 
-/// Packets period packet structure (Packet ID 181, Variable length) - Read/Write  
-/// Uses a length-prefixed format: u8 count followed by that many entries
-#[binrw]
+/// Packets period packet structure (Packet ID 181, Length: 2 + (5 x number of packet periods)) - Read/Write
+/// Format: Permanent (1) | Clear Existing (1) | [Packet ID (1) | Period (4)]...
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
-#[derive(Debug, Clone, PartialEq)]
 pub struct PacketsPeriodPacket {
-    #[br(temp)]
-    #[bw(calc = packet_periods.len() as u8)]
-    count: u8,
-    #[br(count = count)]
+    /// Permanent setting (Field 1)
+    pub permanent: u8,
+    /// Clear existing packet periods (Field 2)
+    pub clear_existing: u8,
+    /// Variable number of packet period entries (Fields 3-4 repeating)
+    /// Each entry is 5 bytes: packet_id (1) + period (4)
+    #[br(parse_with = |reader, _endian, _args: ()| -> binrw::BinResult<Vec<PacketPeriodEntry>> {
+        let mut entries = Vec::new();
+        // Read remaining entries until end of stream
+        while let Ok(entry) = PacketPeriodEntry::read_le(reader) {
+            entries.push(entry);
+        }
+        Ok(entries)
+    })]
+    #[bw(write_with = |entries: &Vec<PacketPeriodEntry>, writer, _endian, _args: ()| -> binrw::BinResult<()> {
+        for entry in entries {
+            entry.write_le(writer)?;
+        }
+        Ok(())
+    })]
     pub packet_periods: Vec<PacketPeriodEntry>,
 }
 

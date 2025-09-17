@@ -7,7 +7,7 @@ mod tests {
         ReferencePointOffsetsPacket, IpDataportsConfigurationPacket,
         IpDataportEntry, IpDataportMode
     };
-    use std::convert::{TryFrom, TryInto};
+    use std::convert::TryInto;
 
     #[test]
     fn test_packet_timer_period_packet_length() {
@@ -26,19 +26,23 @@ mod tests {
     fn test_packets_period_packet_length_empty() {
         // Packet ID 181, Variable length - test with empty entries
         let packet = PacketsPeriodPacket {
+            permanent: 0,
+            clear_existing: 0,
             packet_periods: vec![],
         };
 
         let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
-        // Empty vector should have 1 byte for count
+        // Empty vector should have 2 bytes for permanent and clear_existing
         println!("Empty PacketsPeriodPacket length: {} bytes", bytes.len());
-        assert_eq!(bytes.len(), 1, "Empty PacketsPeriodPacket should be 1 byte (count=0)");
+        assert_eq!(bytes.len(), 2, "Empty PacketsPeriodPacket should be 2 bytes (permanent + clear_existing)");
     }
 
     #[test]
     fn test_packets_period_packet_length_with_entries() {
         // Packet ID 181, Variable length - test with some entries
         let packet = PacketsPeriodPacket {
+            permanent: 1,
+            clear_existing: 0,
             packet_periods: vec![
                 PacketPeriodEntry { packet_id: 20, period: 1000 },
                 PacketPeriodEntry { packet_id: 21, period: 2000 },
@@ -46,15 +50,17 @@ mod tests {
         };
 
         let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
-        // Count (1) + 2 entries × (u8 + u32) = 1 + 2 × 5 = 11 bytes
+        // permanent (1) + clear_existing (1) + 2 entries × (u8 + u32) = 2 + 2 × 5 = 12 bytes
         println!("PacketsPeriodPacket with 2 entries length: {} bytes", bytes.len());
-        assert_eq!(bytes.len(), 11, "PacketsPeriodPacket with 2 entries should be 11 bytes");
+        assert_eq!(bytes.len(), 12, "PacketsPeriodPacket with 2 entries should be 12 bytes");
     }
 
     #[test]
     fn test_packets_period_packet_round_trip() {
         // Test that binrw serialization/deserialization works correctly
         let original = PacketsPeriodPacket {
+            permanent: 1,
+            clear_existing: 1,
             packet_periods: vec![
                 PacketPeriodEntry { packet_id: 180, period: 10000 },
                 PacketPeriodEntry { packet_id: 186, period: 20000 },
@@ -65,15 +71,18 @@ mod tests {
         // Serialize
         let bytes: Vec<u8> = original.clone().try_into().expect("Failed to serialize");
         println!("PacketsPeriodPacket with 3 entries serialized to {} bytes", bytes.len());
-        assert_eq!(bytes.len(), 16, "Should be 1 + 3×5 = 16 bytes");
+        assert_eq!(bytes.len(), 17, "Should be 2 + 3×5 = 17 bytes");
 
-        // Verify first byte is count
-        assert_eq!(bytes[0], 3, "First byte should be entry count");
+        // Verify first two bytes are permanent and clear_existing
+        assert_eq!(bytes[0], 1, "First byte should be permanent");
+        assert_eq!(bytes[1], 1, "Second byte should be clear_existing");
 
-        // Deserialize  
+        // Deserialize
         let deserialized: PacketsPeriodPacket = bytes.try_into().expect("Failed to deserialize");
 
         // Verify round-trip consistency
+        assert_eq!(deserialized.permanent, original.permanent);
+        assert_eq!(deserialized.clear_existing, original.clear_existing);
         assert_eq!(deserialized.packet_periods, original.packet_periods);
         println!("✅ PacketsPeriodPacket round-trip successful with binrw");
     }
@@ -243,6 +252,8 @@ mod tests {
         println!("PacketTimerPeriodPacket (ID 180): Expected 4, Actual {}", timer_bytes.len());
 
         let periods_packet = PacketsPeriodPacket {
+            permanent: 0,
+            clear_existing: 0,
             packet_periods: vec![],
         };
         let periods_bytes: Vec<u8> = periods_packet.try_into().unwrap();
