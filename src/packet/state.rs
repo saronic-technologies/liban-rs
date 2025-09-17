@@ -1,12 +1,13 @@
 use crate::error::{AnError, Result};
-use serde::{Deserialize, Serialize};
-use super::impl_packet_conversions;
+use binrw::{BinRead, BinWrite};
+use super::impl_binrw_packet_conversions;
 use super::flags::{SystemStatusFlags, FilterStatusFlags};
 
 /// State Packets (20-23)
 
 /// System state packet structure (Packet ID 20, Length 100) - Read only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct SystemStatePacket {
     /// System Status (Field 1)
     pub system_status: SystemStatusFlags,
@@ -56,46 +57,27 @@ pub struct SystemStatePacket {
     pub height_std_dev: f32,
 }
 
-impl_packet_conversions!(SystemStatePacket);
+impl_binrw_packet_conversions!(SystemStatePacket);
 
 /// Unix time packet structure (Packet ID 21, Length 8) - Read only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct UnixTimePacket {
     pub unix_time_seconds: u32,
     pub microseconds: u32,
 }
 
-impl_packet_conversions!(UnixTimePacket);
+impl_binrw_packet_conversions!(UnixTimePacket);
 
-/// Status packet structure (Packet ID 23, Variable length) - Read only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Status packet structure (Packet ID 23, Length 4) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct StatusPacket {
     pub system_status: SystemStatusFlags,
     pub filter_status: FilterStatusFlags,
-    pub unix_time_seconds: u32,
-    pub microseconds: u32,
-    pub latitude: f64,
-    pub longitude: f64,
-    pub height: f32,
-    pub velocity_north: f32,
-    pub velocity_east: f32,
-    pub velocity_down: f32,
-    pub body_acceleration_x: f32,
-    pub body_acceleration_y: f32,
-    pub body_acceleration_z: f32,
-    pub g_force: f32,
-    pub roll: f32,
-    pub pitch: f32,
-    pub heading: f32,
-    pub angular_velocity_x: f32,
-    pub angular_velocity_y: f32,
-    pub angular_velocity_z: f32,
-    pub standard_deviation_latitude: f32,
-    pub standard_deviation_longitude: f32,
-    pub standard_deviation_height: f32,
 }
 
-impl_packet_conversions!(StatusPacket);
+impl_binrw_packet_conversions!(StatusPacket);
 
 #[cfg(test)]
 mod tests {
@@ -185,3 +167,7 @@ mod tests {
         assert_eq!(system_state, deserialized);
     }
 }
+
+#[cfg(test)]
+#[path = "tests/state.rs"]
+mod state_length_tests;

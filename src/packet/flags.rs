@@ -1,9 +1,12 @@
-use serde::{Deserialize, Serialize};
+use binrw::binrw;
 use bitflags::bitflags;
 
 bitflags! {
     /// System status bitmask for SystemStatePacket
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[binrw]
+    #[br(map = |x: u16| SystemStatusFlags::from_bits_truncate(x))]
+    #[bw(map = |x: &SystemStatusFlags| x.bits())]
     pub struct SystemStatusFlags: u16 {
         const SYSTEM_FAILURE = 1 << 0;
         const ACCELEROMETER_SENSOR_FAILURE = 1 << 1;
@@ -26,7 +29,10 @@ bitflags! {
 
 bitflags! {
     /// Filter status bitmask for SystemStatePacket
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[binrw]
+    #[br(map = |x: u16| FilterStatusFlags::from_bits_truncate(x))]
+    #[bw(map = |x: &FilterStatusFlags| x.bits())]
     pub struct FilterStatusFlags: u16 {
         const ORIENTATION_FILTER_INITIALISED = 1 << 0;
         const NAVIGATION_FILTER_INITIALISED = 1 << 1;
@@ -51,6 +57,7 @@ impl FilterStatusFlags {
         ((self.bits() & Self::GNSS_FIX_TYPE_MASK.bits()) >> 4) as u8
     }
 }
+
 
 #[cfg(test)]
 mod tests {

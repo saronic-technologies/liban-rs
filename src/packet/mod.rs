@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 
 pub mod system;
 pub mod state;
@@ -6,7 +5,7 @@ pub mod config;
 pub mod flags;
 
 /// ANPP packet identifiers for Advanced Navigation devices
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum PacketId {
     // System Packets
@@ -64,14 +63,17 @@ impl PacketId {
     }
 }
 
-/// Macro to implement TryFrom<&[u8]>, TryFrom<Vec<u8>>, and TryInto<Vec<u8>> for ANPP packet types
-macro_rules! impl_packet_conversions {
+
+/// Macro to implement TryFrom<&[u8]>, TryFrom<Vec<u8>>, and TryInto<Vec<u8>> for ANPP packet types using binrw
+macro_rules! impl_binrw_packet_conversions {
     ($packet_type:ty) => {
         impl TryFrom<&[u8]> for $packet_type {
             type Error = AnError;
 
             fn try_from(data: &[u8]) -> Result<Self> {
-                bincode::deserialize(data)
+                use binrw::BinRead;
+                let mut cursor = std::io::Cursor::new(data);
+                Self::read_le(&mut cursor)
                     .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize {}: {}", stringify!($packet_type), e)))
             }
         }
@@ -88,11 +90,14 @@ macro_rules! impl_packet_conversions {
             type Error = AnError;
 
             fn try_into(self) -> Result<Vec<u8>> {
-                bincode::serialize(&self)
-                    .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize {}: {}", stringify!($packet_type), e)))
+                use binrw::BinWrite;
+                let mut cursor = std::io::Cursor::new(Vec::new());
+                self.write_le(&mut cursor)
+                    .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize {}: {}", stringify!($packet_type), e)))?;
+                Ok(cursor.into_inner())
             }
         }
     };
 }
 
-pub(crate) use impl_packet_conversions;
+pub(crate) use impl_binrw_packet_conversions;

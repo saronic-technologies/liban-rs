@@ -1,37 +1,41 @@
 use crate::error::{AnError, Result};
-use serde::{Deserialize, Serialize};
-use super::impl_packet_conversions;
+use binrw::{BinRead, BinWrite};
+use super::impl_binrw_packet_conversions;
 
 /// System Packets (0-14)
 
 /// Acknowledge packet structure (Packet ID 0, Length 4) - Read only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct AcknowledgePacket {
     pub packet_id: u8,
     pub packet_crc: u16,
     pub result: u8,
 }
 
-impl_packet_conversions!(AcknowledgePacket);
+impl_binrw_packet_conversions!(AcknowledgePacket);
 
 /// Request packet structure (Packet ID 1, Variable length) - Write only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct RequestPacket {
     pub packet_id: u8,
 }
 
-impl_packet_conversions!(RequestPacket);
+impl_binrw_packet_conversions!(RequestPacket);
 
 /// Boot mode packet structure (Packet ID 2, Length 1) - Read/Write
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct BootModePacket {
     pub boot_mode: u8,
 }
 
-impl_packet_conversions!(BootModePacket);
+impl_binrw_packet_conversions!(BootModePacket);
 
 /// Device information packet structure (Packet ID 3, Length 24) - Read only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct DeviceInformationPacket {
     pub software_version: u32,
     pub device_id: u32,
@@ -41,27 +45,19 @@ pub struct DeviceInformationPacket {
     pub serial_number_3: u32,
 }
 
-impl_packet_conversions!(DeviceInformationPacket);
+impl_binrw_packet_conversions!(DeviceInformationPacket);
 
-impl DeviceInformationPacket {
-    /// Get the complete serial number as a formatted string
-    pub fn get_serial_number(&self) -> String {
-        format!(
-            "{}-{}-{}",
-            self.serial_number_1, self.serial_number_2, self.serial_number_3
-        )
-    }
-}
 
 /// Restore factory settings packet structure (Packet ID 4, Length 4) - Write only
 ///
 /// Note: A Factory Reset will re-enable the DHCP Client and lose any static IP address settings.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct RestoreFactorySettingsPacket {
     pub verification: u32, // Verification code (must be 0x85429E1C)
 }
 
-impl_packet_conversions!(RestoreFactorySettingsPacket);
+impl_binrw_packet_conversions!(RestoreFactorySettingsPacket);
 
 impl RestoreFactorySettingsPacket {
     /// Create a new restore factory settings packet with the correct verification code
@@ -79,12 +75,13 @@ impl Default for RestoreFactorySettingsPacket {
 }
 
 /// Reset packet structure (Packet ID 5, Length 4) - Write only
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct ResetPacket {
     pub verification: u32, // Verification code (must be 0x21057A7E)
 }
 
-impl_packet_conversions!(ResetPacket);
+impl_binrw_packet_conversions!(ResetPacket);
 
 impl ResetPacket {
     /// Create a new reset packet with the correct verification code
@@ -102,7 +99,8 @@ impl Default for ResetPacket {
 }
 
 /// IP configuration packet structure (Packet ID 11, Length 30) - Read/Write
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
 pub struct IpConfigurationPacket {
     pub permanent: u8,
     pub dhcp_mode: u8,
@@ -110,10 +108,13 @@ pub struct IpConfigurationPacket {
     pub ip_netmask: u32,
     pub ip_gateway: u32,
     pub dns_server: u32,
-    pub hostname: [u8; 16],
+    pub boreas_serial_number_part_1: u32,
+    pub boreas_serial_number_part_2: u32,
+    pub boreas_serial_number_part_3: u32,
 }
 
-impl_packet_conversions!(IpConfigurationPacket);
+impl_binrw_packet_conversions!(IpConfigurationPacket);
+
 
 #[cfg(test)]
 mod tests {
@@ -153,7 +154,6 @@ mod tests {
         let deserialized = DeviceInformationPacket::try_from(serialized).unwrap();
 
         assert_eq!(device_info, deserialized);
-        assert_eq!(deserialized.get_serial_number(), "111-222-333");
     }
 
     #[test]
@@ -169,3 +169,7 @@ mod tests {
         assert_eq!(deserialized.boot_mode, 42);
     }
 }
+
+#[cfg(test)]
+#[path = "tests/system.rs"]
+mod system_length_tests;
