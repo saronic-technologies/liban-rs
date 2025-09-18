@@ -33,13 +33,6 @@ The library implements the following ANPP (Advanced Navigation Packet Protocol) 
 - **ReferencePointOffsetsPacket** (ID 194) - Reference point offsets for 4 heave points with COG lever arm support
 - **IpDataportsConfigurationPacket** (ID 202) - 4 IP dataport configurations (TCP Server/Client, UDP, MODE_NONE)
 
-### Advanced Features
-- **FilterStatus** - 16-bit filter status interpretation with initialization tracking
-- **SystemStatus** - 16-bit system status with comprehensive alarm and failure detection
-- **VehicleType** enum - 15 predefined vehicle types for optimal filter performance
-- **IpDataportMode** enum - 5 connection modes (MODE_NONE, Reserved, MODE_TCP_SERVER, MODE_TCP_CLIENT, MODE_UDP)
-- **OffsetVector** - 3D coordinate management for reference point calculations
-
 ## Protocol Details
 
 ### ANPP Packet Structure

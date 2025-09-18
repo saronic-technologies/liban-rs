@@ -311,6 +311,21 @@ async fn show_demo_packets() -> Result<()> {
     };
     println!("{:#?}\n", installation);
 
+    println!("✓ Filter Options received:");
+    let filter_options = FilterOptionsPacket {
+        permanent: 1,
+        vehicle_type: liban::packet::config::VehicleType::Car,
+        internal_gnss_enabled: 1,
+        reserved1: 0,
+        atmospheric_altitude_enabled: 0,
+        velocity_heading_enabled: 1,
+        reversing_detection_enabled: 1,
+        motion_analysis_enabled: 1,
+        reserved2: 0,
+        reserved3: [0; 8],
+    };
+    println!("{:#?}\n", filter_options);
+
     println!("=== Demo Complete ===");
     println!("To connect to a real device, use: <program> <host> <port>");
 

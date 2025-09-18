@@ -97,22 +97,21 @@ impl_binrw_packet_conversions!(FilterOptionsPacket);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
 #[brw(repr = u8)]
 pub enum VehicleType {
-    Car = 0,
-    Motorcycle = 1,
-    Aircraft = 2,
-    Boat = 3,
-    PersonalWatercraft = 4,
-    Ship = 5,
-    Helicopter = 6,
-    Train = 7,
-    FixedWing = 8,
-    MultiRotor = 9,
-    Tank = 10,
-    Truck = 11,
-    ArmoredVehicle = 12,
-    Bus = 13,
-    Excavator = 14,
-    Bulldozer = 15,
+    Unlimited = 0,
+    BicycleOrMotorcycle = 1,
+    Car = 2,
+    Hovercraft = 3,
+    Submarine = 4,
+    Underwater3D = 5,
+    FixedWingPlane = 6,
+    Aircraft3D = 7,
+    Human = 8,
+    Boat = 9,
+    LargeShip = 10,
+    Stationary = 11,
+    StuntPlane = 12,
+    RaceCar = 13,
+    Train = 14,
 }
 
 /// Odometer configuration packet structure (Packet ID 192, Length 8) - Read/Write
