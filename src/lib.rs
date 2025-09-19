@@ -5,6 +5,7 @@
 
 pub mod error;
 pub mod packet;
+pub mod parser;
 pub mod protocol;
 
 pub use error::{AnError, Result};
@@ -42,4 +43,5 @@ pub use packet::config::{
     SetZeroOrientationAlignmentPacket,
     VehicleType,
 };
+pub use parser::AnppParser;
 pub use protocol::AnppProtocol;

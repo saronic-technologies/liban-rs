@@ -11,6 +11,7 @@ bytes = "1.5"
 crc = "3.0"
 paste = "1.0"
 thiserror = "1.0"
+tracing = "0.1"
 
 [dev-dependencies]
 futures = "0.3"
