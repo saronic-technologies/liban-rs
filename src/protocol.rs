@@ -1,13 +1,15 @@
 use crate::error::{AnError, Result};
-use bytes::{Buf, BufMut, BytesMut};
+use crate::packet::{PacketId, AnppHeader, AnppPacket};
 use crc::{Crc, Algorithm};
+use binrw::{BinRead, BinWrite};
+use std::io::Cursor;
 
 /// Advanced Navigation Packet Protocol implementation
 pub struct AnppProtocol;
 
 impl AnppProtocol {
-    /// CRC16-CCITT algorithm definition
-    const CRC16_CCITT: Algorithm<u16> = Algorithm {
+    /// CRC16-CCITT calculator instance
+    const CRC16: Crc<u16> = Crc::<u16>::new(&Algorithm {
         width: 16,
         poly: 0x1021,
         init: 0xFFFF,
@@ -16,136 +18,58 @@ impl AnppProtocol {
         xorout: 0x0000,
         check: 0x29B1,
         residue: 0x0000,
-    };
-
-    /// CRC16-CCITT calculator instance
-    const CRC16: Crc<u16> = Crc::<u16>::new(&Self::CRC16_CCITT);
+    });
 
     /// Calculate CRC16-CCITT checksum for packet data
-    ///
-    /// Uses polynomial 0x1021 with initial value 0xFFFF
     pub fn calculate_crc16(data: &[u8]) -> u16 {
         Self::CRC16.checksum(data)
     }
 
-    /// Create an ANPP packet with proper header and checksum
-    ///
-    /// Packet format: [Header LRC][ID][Length][CRC16][Data]
-    /// Header LRC = (PacketID + Length + CRC0 + CRC1) XOR 0xFF + 1
-    pub fn create_packet(packet_id: u8, data: &[u8]) -> Result<Vec<u8>> {
+    /// Create an ANPP packet from structured components
+    pub fn create_packet(packet_id: PacketId, data: &[u8]) -> Result<Vec<u8>> {
         if data.len() > 255 {
             return Err(AnError::PacketTooLong(data.len()));
         }
 
         let length = data.len() as u8;
-        let crc = Self::calculate_crc16(data);
+        let crc16 = Self::calculate_crc16(data);
 
-        // Convert CRC to little-endian bytes
-        let mut crc_buf = BytesMut::with_capacity(2);
-        crc_buf.put_u16_le(crc);
-        let crc_bytes = crc_buf.freeze();
-        let crc0 = crc_bytes[0];
-        let crc1 = crc_bytes[1];
-
-        // Calculate Header LRC: (PacketID + PacketLength + crc0 + crc1) XOR 0xFF + 1
-        let mut header_lrc =
-            ((packet_id as u16 + length as u16 + crc0 as u16 + crc1 as u16) ^ 0xFF) + 1;
+        // Calculate Header LRC
+        let crc_bytes = crc16.to_le_bytes();
+        let mut header_lrc = ((packet_id.as_u8() as u16 + length as u16
+                             + crc_bytes[0] as u16 + crc_bytes[1] as u16) ^ 0xFF) + 1;
         if header_lrc > 255 {
             header_lrc %= 256;
         }
 
-        // Build packet: Header LRC + ID + Length + CRC16 + Data
-        let mut packet = Vec::with_capacity(5 + data.len());
-        packet.push(header_lrc as u8);
-        packet.push(packet_id);
-        packet.push(length);
-        packet.extend_from_slice(&crc_bytes);
-        packet.extend_from_slice(data);
+        // Build header
+        let header = AnppHeader {
+            header_lrc: header_lrc as u8,
+            packet_id,
+            length,
+            crc16,
+        };
 
-        // Packet created successfully
+        // Serialize header and append data
+        let mut packet = Self::serialize_header(&header)?;
+        packet.extend_from_slice(data);
 
         Ok(packet)
     }
 
-    /// Parse an ANPP packet and validate checksums
-    ///
-    /// Returns (packet_id, data) on success
-    pub fn parse_packet(packet: &[u8]) -> Result<(u8, Vec<u8>)> {
+    /// Parse an ANPP packet and return structured header with data
+    pub fn parse_packet(packet: &[u8]) -> Result<(AnppHeader, Vec<u8>)> {
         if packet.len() < 5 {
             return Err(AnError::InvalidPacket(
                 "Packet too short (minimum 5 bytes)".to_string(),
             ));
         }
 
-        let header_lrc = packet[0];
-        let packet_id = packet[1];
-        let length = packet[2];
+        // Extract header
+        let header = Self::deserialize_header(&packet[..5])?;
 
-        // Extract CRC from packet
-        let mut crc_buf = &packet[3..5];
-        let received_crc = crc_buf.get_u16_le();
-        let crc_bytes = &packet[3..5];
-
-        // Verify Header LRC
-        let crc0 = crc_bytes[0];
-        let crc1 = crc_bytes[1];
-        let mut expected_lrc =
-            ((packet_id as u16 + length as u16 + crc0 as u16 + crc1 as u16) ^ 0xFF) + 1;
-        if expected_lrc > 255 {
-            expected_lrc %= 256;
-        }
-
-        if header_lrc != expected_lrc as u8 {
-            return Err(AnError::InvalidPacket(format!(
-                "Header LRC mismatch: expected 0x{:02X}, got 0x{:02X}",
-                expected_lrc, header_lrc
-            )));
-        }
-
-        // Check packet length consistency
-        let expected_packet_length = 5 + length as usize; // Header + data
-        if packet.len() != expected_packet_length {
-            return Err(AnError::InvalidLength {
-                expected: expected_packet_length,
-                actual: packet.len(),
-            });
-        }
-
-        // Extract data payload
-        let data = if length > 0 {
-            packet[5..5 + length as usize].to_vec()
-        } else {
-            Vec::new()
-        };
-
-        // Verify CRC16 checksum
-        let calculated_crc = Self::calculate_crc16(&data);
-        if received_crc != calculated_crc {
-            return Err(AnError::InvalidChecksum);
-        }
-
-        // Packet parsed successfully
-
-        Ok((packet_id, data))
-    }
-
-    /// Create a request packet for the specified packet ID
-    pub fn create_request_packet(requested_packet_id: u8) -> Result<Vec<u8>> {
-        let request_data = vec![requested_packet_id];
-        Self::create_packet(1, &request_data) // Packet ID 1 is Request
-    }
-
-    /// Validate packet structure without parsing data
-    pub fn validate_packet_structure(packet: &[u8]) -> Result<()> {
-        if packet.len() < 5 {
-            return Err(AnError::InvalidPacket(
-                "Packet too short for header".to_string(),
-            ));
-        }
-
-        let length = packet[2];
-        let expected_length = 5 + length as usize;
-
+        // Validate packet length
+        let expected_length = 5 + header.length as usize;
         if packet.len() != expected_length {
             return Err(AnError::InvalidLength {
                 expected: expected_length,
@@ -153,27 +77,85 @@ impl AnppProtocol {
             });
         }
 
+        // Extract data
+        let data = if header.length > 0 {
+            packet[5..expected_length].to_vec()
+        } else {
+            Vec::new()
+        };
+
+        // Validate header against data
+        Self::validate_header(&header, &data)?;
+
+        Ok((header, data))
+    }
+
+    /// Serialize header to bytes using binrw
+    pub fn serialize_header(header: &AnppHeader) -> Result<Vec<u8>> {
+        let mut cursor = Cursor::new(Vec::new());
+        header.write_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize header: {}", e)))?;
+        Ok(cursor.into_inner())
+    }
+
+    /// Deserialize header from bytes using binrw
+    pub fn deserialize_header(bytes: &[u8]) -> Result<AnppHeader> {
+        let mut cursor = Cursor::new(bytes);
+        AnppHeader::read_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize header: {}", e)))
+    }
+
+    /// Validate header against data payload
+    pub fn validate_header(header: &AnppHeader, data: &[u8]) -> Result<()> {
+        // Validate length
+        if header.length as usize != data.len() {
+            return Err(AnError::InvalidLength {
+                expected: header.length as usize,
+                actual: data.len(),
+            });
+        }
+
+        // Validate CRC
+        let calculated_crc = Self::calculate_crc16(data);
+        if header.crc16 != calculated_crc {
+            return Err(AnError::InvalidChecksum);
+        }
+
+        // Validate header LRC
+        let crc_bytes = header.crc16.to_le_bytes();
+        let mut expected_lrc = ((header.packet_id.as_u8() as u16 + header.length as u16
+                               + crc_bytes[0] as u16 + crc_bytes[1] as u16) ^ 0xFF) + 1;
+        if expected_lrc > 255 {
+            expected_lrc %= 256;
+        }
+
+        if header.header_lrc != expected_lrc as u8 {
+            return Err(AnError::InvalidPacket(format!(
+                "Header LRC mismatch: expected 0x{:02X}, got 0x{:02X}",
+                expected_lrc, header.header_lrc
+            )));
+        }
+
         Ok(())
     }
 
-    /// Extract packet ID from raw packet without full parsing
-    pub fn extract_packet_id(packet: &[u8]) -> Result<u8> {
-        if packet.len() < 2 {
-            return Err(AnError::InvalidPacket(
-                "Packet too short to contain ID".to_string(),
-            ));
-        }
-        Ok(packet[1])
+    /// Create an ANPP packet from AnppPacket enum
+    pub fn create_anpp_packet(packet: AnppPacket) -> Result<Vec<u8>> {
+        let packet_id = PacketId::new(packet.packet_id());
+        let data = packet.to_bytes()?;
+        Self::create_packet(packet_id, &data)
     }
 
-    /// Extract packet length from raw packet
-    pub fn extract_packet_length(packet: &[u8]) -> Result<u8> {
-        if packet.len() < 3 {
-            return Err(AnError::InvalidPacket(
-                "Packet too short to contain length".to_string(),
-            ));
-        }
-        Ok(packet[2])
+    /// Parse raw bytes into AnppPacket enum
+    pub fn parse_anpp_packet(packet: &[u8]) -> Result<AnppPacket> {
+        let (header, data) = Self::parse_packet(packet)?;
+        AnppPacket::from_bytes(header.packet_id.as_u8(), data)
+    }
+
+    /// Create a request packet for the specified packet ID
+    pub fn create_request_packet(requested_packet_id: PacketId) -> Result<Vec<u8>> {
+        let request_data = vec![requested_packet_id.as_u8()];
+        Self::create_packet(PacketId::new(1), &request_data)
     }
 }
 
@@ -197,25 +179,63 @@ mod tests {
     #[test]
     fn test_packet_creation_and_parsing() {
         let test_data = vec![0x01, 0x02, 0x03, 0x04];
-        let packet_id = 20;
+        let packet_id = PacketId::new(20);
 
         // Create a packet
         let packet = AnppProtocol::create_packet(packet_id, &test_data).unwrap();
 
         // Parse it back
-        let (parsed_id, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
+        let (header, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
 
-        assert_eq!(parsed_id, packet_id);
+        assert_eq!(header.packet_id.as_u8(), 20);
+        assert_eq!(header.length, test_data.len() as u8);
         assert_eq!(parsed_data, test_data);
     }
 
     #[test]
     fn test_request_packet_creation() {
-        let request_packet = AnppProtocol::create_request_packet(3).unwrap();
+        let requested_id = PacketId::new(3);
+        let request_packet = AnppProtocol::create_request_packet(requested_id).unwrap();
 
         // Should be a request packet (ID 1) containing the requested packet ID
-        let (packet_id, data) = AnppProtocol::parse_packet(&request_packet).unwrap();
-        assert_eq!(packet_id, 1); // Request packet ID
+        let (header, data) = AnppProtocol::parse_packet(&request_packet).unwrap();
+        assert_eq!(header.packet_id.as_u8(), 1); // Request packet ID
         assert_eq!(data, vec![3]); // Requested packet ID
+    }
+
+    #[test]
+    fn test_header_serialization() {
+        let header = AnppHeader {
+            header_lrc: 0xAB,
+            packet_id: PacketId::new(20),
+            length: 4,
+            crc16: 0x1234,
+        };
+
+        // Serialize and deserialize
+        let bytes = AnppProtocol::serialize_header(&header).unwrap();
+        let deserialized = AnppProtocol::deserialize_header(&bytes).unwrap();
+
+        assert_eq!(header.header_lrc, deserialized.header_lrc);
+        assert_eq!(header.packet_id.as_u8(), deserialized.packet_id.as_u8());
+        assert_eq!(header.length, deserialized.length);
+        assert_eq!(header.crc16, deserialized.crc16);
+    }
+
+    #[test]
+    fn test_header_validation() {
+        let test_data = vec![0x01, 0x02, 0x03, 0x04];
+        let packet_id = PacketId::new(20);
+
+        // Create a packet
+        let packet = AnppProtocol::create_packet(packet_id, &test_data).unwrap();
+
+        // Parse and validate
+        let (header, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
+        AnppProtocol::validate_header(&header, &parsed_data).unwrap();
+
+        assert_eq!(header.packet_id.as_u8(), 20);
+        assert_eq!(header.length, test_data.len() as u8);
+        assert_eq!(parsed_data, test_data);
     }
 }

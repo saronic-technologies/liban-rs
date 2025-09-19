@@ -8,7 +8,7 @@ pub mod packet;
 pub mod protocol;
 
 pub use error::{AnError, Result};
-pub use packet::PacketId;
+pub use packet::{PacketId, PacketKind, AnppPacket, AnppHeader};
 pub use packet::system::{
     AcknowledgePacket,
     BootModePacket,

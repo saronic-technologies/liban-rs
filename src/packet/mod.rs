@@ -1,103 +1,175 @@
 
+use binrw::{BinRead, BinWrite};
+use crate::{Result, error::AnError};
 pub mod system;
 pub mod state;
 pub mod config;
 pub mod flags;
 
-/// ANPP packet identifiers for Advanced Navigation devices
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub enum PacketId {
-    // System Packets
-    Acknowledge = 0,
-    Request = 1,
-    BootMode = 2,
-    DeviceInformation = 3,
-    RestoreFactorySettings = 4,
-    Reset = 5,
-    IpConfiguration = 11,
-    // State Packets
-    SystemState = 20,
-    UnixTime = 21,
-    Status = 23,
-    // Configuration packets
-    PacketTimerPeriod = 180,
-    PacketsPeriod = 181,
-    InstallationAlignment = 185,
-    FilterOptions = 186,
-    OdometerConfiguration = 192,
-    SetZeroOrientationAlignment = 193,
-    ReferencePointOffsets = 194,
-    IpDataportsConfiguration = 202,
+/// ANPP packet identifier structure
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+#[brw(little)]
+pub struct PacketId {
+    pub id: u8,
 }
 
 impl PacketId {
-    /// Convert a u8 value to a PacketId
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            0 => Some(Self::Acknowledge),
-            1 => Some(Self::Request),
-            2 => Some(Self::BootMode),
-            3 => Some(Self::DeviceInformation),
-            4 => Some(Self::RestoreFactorySettings),
-            5 => Some(Self::Reset),
-            11 => Some(Self::IpConfiguration),
-            20 => Some(Self::SystemState),
-            21 => Some(Self::UnixTime),
-            23 => Some(Self::Status),
-            180 => Some(Self::PacketTimerPeriod),
-            181 => Some(Self::PacketsPeriod),
-            185 => Some(Self::InstallationAlignment),
-            186 => Some(Self::FilterOptions),
-            192 => Some(Self::OdometerConfiguration),
-            193 => Some(Self::SetZeroOrientationAlignment),
-            194 => Some(Self::ReferencePointOffsets),
-            202 => Some(Self::IpDataportsConfiguration),
-            _ => None,
-        }
+    /// Get the packet type for this ID
+    pub fn packet_type(&self) -> PacketKind {
+        PacketKind::from(self.id)
+    }
+
+    /// Create a new PacketId from a u8 value
+    pub fn new(id: u8) -> Self {
+        Self { id }
     }
 
     /// Get the u8 value of the PacketId
-    pub fn as_u8(self) -> u8 {
-        self as u8
+    pub fn as_u8(&self) -> u8 {
+        self.id
     }
 }
 
+/// ANPP packet header structure
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct AnppHeader {
+    pub header_lrc: u8,
+    pub packet_id: PacketId,
+    pub length: u8,
+    pub crc16: u16,
+}
 
-/// Macro to implement TryFrom<&[u8]>, TryFrom<Vec<u8>>, and TryInto<Vec<u8>> for ANPP packet types using binrw
-macro_rules! impl_binrw_packet_conversions {
-    ($packet_type:ty) => {
-        impl TryFrom<&[u8]> for $packet_type {
-            type Error = AnError;
+// Import packet types from their respective modules
+use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
+            RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket};
+use state::{SystemStatePacket, UnixTimePacket, StatusPacket};
+use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignmentPacket,
+            FilterOptionsPacket, OdometerConfigurationPacket, SetZeroOrientationAlignmentPacket,
+            ReferencePointOffsetsPacket, IpDataportsConfigurationPacket};
 
-            fn try_from(data: &[u8]) -> Result<Self> {
-                use binrw::BinRead;
-                let mut cursor = std::io::Cursor::new(data);
-                Self::read_le(&mut cursor)
-                    .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize {}: {}", stringify!($packet_type), e)))
+macro_rules! define_packets {
+    ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
+        paste::paste! {
+            /// Core enum that represents the packet kind
+            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+            pub enum PacketKind {
+                $( $variant, )+
+                Unsupported,
             }
-        }
 
-        impl TryFrom<Vec<u8>> for $packet_type {
-            type Error = AnError;
-
-            fn try_from(data: Vec<u8>) -> Result<Self> {
-                Self::try_from(data.as_slice())
+            impl PacketKind {
+                /// Get the expected byte length for this packet kind
+                pub fn byte_length(&self) -> Option<usize> {
+                    match self {
+                        $( PacketKind::$variant => $length, )+
+                        PacketKind::Unsupported => None,
+                    }
+                }
             }
-        }
 
-        impl TryInto<Vec<u8>> for $packet_type {
-            type Error = AnError;
+            impl From<u8> for PacketKind {
+                fn from(id: u8) -> Self {
+                    match id {
+                        $( $code => PacketKind::$variant, )+
+                        _ => PacketKind::Unsupported,
+                    }
+                }
+            }
 
-            fn try_into(self) -> Result<Vec<u8>> {
-                use binrw::BinWrite;
-                let mut cursor = std::io::Cursor::new(Vec::new());
-                self.write_le(&mut cursor)
-                    .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize {}: {}", stringify!($packet_type), e)))?;
-                Ok(cursor.into_inner())
+            /// Detailed enum that holds the associated payload
+            #[derive(Debug)]
+            pub enum AnppPacket {
+                $( $variant([<$variant Packet>]), )+
+                Unsupported(Vec<u8>),
+            }
+
+            impl AnppPacket {
+                /// Get the packet kind for this packet
+                pub fn kind(&self) -> PacketKind {
+                    match self {
+                        $( AnppPacket::$variant(_) => PacketKind::$variant, )+
+                        AnppPacket::Unsupported(_) => PacketKind::Unsupported,
+                    }
+                }
+
+                /// Get the packet ID for this packet
+                pub fn packet_id(&self) -> u8 {
+                    match self {
+                        $( AnppPacket::$variant(_) => $code, )+
+                        AnppPacket::Unsupported(_) => 0xFF,
+                    }
+                }
+
+                /// Get the expected byte length for this packet
+                pub fn byte_length(&self) -> Option<usize> {
+                    self.kind().byte_length()
+                }
+
+                /// Parse a packet from raw bytes
+                pub fn from_bytes(packet_id: u8, data: Vec<u8>) -> Result<Self> {
+                    use binrw::BinRead;
+                    use std::io::Cursor;
+
+                    let packet = match PacketKind::from(packet_id) {
+                        $(
+                            PacketKind::$variant => {
+                                let mut cursor = Cursor::new(&data);
+                                AnppPacket::$variant([<$variant Packet>]::read_le(&mut cursor)
+                                    .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize {}: {}", stringify!([<$variant Packet>]), e)))?)
+                            },
+                        )+
+                        PacketKind::Unsupported => AnppPacket::Unsupported(data),
+                    };
+                    Ok(packet)
+                }
+
+                /// Convert packet to bytes
+                pub fn to_bytes(&self) -> crate::Result<Vec<u8>> {
+                    use binrw::BinWrite;
+                    use std::io::Cursor;
+
+                    match self {
+                        $(
+                            AnppPacket::$variant(p) => {
+                                let mut cursor = Cursor::new(Vec::new());
+                                p.write_le(&mut cursor)
+                                    .map_err(|e| crate::error::AnError::InvalidPacket(format!("Failed to serialize {}: {}", stringify!([<$variant Packet>]), e)))?;
+                                Ok(cursor.into_inner())
+                            },
+                        )+
+                        AnppPacket::Unsupported(data) => Ok(data.clone()),
+                    }
+                }
             }
         }
     };
 }
 
-pub(crate) use impl_binrw_packet_conversions;
+define_packets!(
+    // System Packets (0-14)
+    Acknowledge => 0, Some(4),
+    Request => 1, Some(1),
+    BootMode => 2, Some(1),
+    DeviceInformation => 3, Some(24),
+    RestoreFactorySettings => 4, Some(4),
+    Reset => 5, Some(4),
+    IpConfiguration => 11, Some(30),
+
+    // State Packets (20-23)
+    SystemState => 20, Some(100),
+    UnixTime => 21, Some(8),
+    Status => 23, Some(4),
+
+    // Configuration Packets (180-203)
+    PacketTimerPeriod => 180, Some(4),
+    PacketsPeriod => 181, None,
+    InstallationAlignment => 185, Some(73),
+    FilterOptions => 186, Some(17),
+    OdometerConfiguration => 192, Some(8),
+    SetZeroOrientationAlignment => 193, Some(1),
+    ReferencePointOffsets => 194, Some(13),
+    IpDataportsConfiguration => 202, Some(30),
+);
+
+

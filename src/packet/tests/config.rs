@@ -7,7 +7,7 @@ mod tests {
         ReferencePointOffsetsPacket, IpDataportsConfigurationPacket,
         IpDataportEntry, IpDataportMode
     };
-    use std::convert::TryInto;
+    use binrw::{BinRead, BinWrite};
 
     #[test]
     fn test_packet_timer_period_packet_length() {
@@ -18,7 +18,9 @@ mod tests {
             packet_timer_period: 10000, // 10 ms in microseconds
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "PacketTimerPeriodPacket should be 4 bytes");
     }
 
@@ -31,7 +33,9 @@ mod tests {
             packet_periods: vec![],
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         // Empty vector should have 2 bytes for permanent and clear_existing
         println!("Empty PacketsPeriodPacket length: {} bytes", bytes.len());
         assert_eq!(bytes.len(), 2, "Empty PacketsPeriodPacket should be 2 bytes (permanent + clear_existing)");
@@ -49,7 +53,9 @@ mod tests {
             ],
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         // permanent (1) + clear_existing (1) + 2 entries × (u8 + u32) = 2 + 2 × 5 = 12 bytes
         println!("PacketsPeriodPacket with 2 entries length: {} bytes", bytes.len());
         assert_eq!(bytes.len(), 12, "PacketsPeriodPacket with 2 entries should be 12 bytes");
@@ -69,7 +75,9 @@ mod tests {
         };
 
         // Serialize
-        let bytes: Vec<u8> = original.clone().try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         println!("PacketsPeriodPacket with 3 entries serialized to {} bytes", bytes.len());
         assert_eq!(bytes.len(), 17, "Should be 2 + 3×5 = 17 bytes");
 
@@ -78,7 +86,8 @@ mod tests {
         assert_eq!(bytes[1], 1, "Second byte should be clear_existing");
 
         // Deserialize
-        let deserialized: PacketsPeriodPacket = bytes.try_into().expect("Failed to deserialize");
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = PacketsPeriodPacket::read_le(&mut cursor).expect("Failed to deserialize");
 
         // Verify round-trip consistency
         assert_eq!(deserialized.permanent, original.permanent);
@@ -98,7 +107,9 @@ mod tests {
             external_data_offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 73, "InstallationAlignmentPacket should be 73 bytes");
     }
 
@@ -118,7 +129,9 @@ mod tests {
             reserved3: [0; 8],
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 17, "FilterOptionsPacket should be 17 bytes");
     }
 
@@ -132,7 +145,9 @@ mod tests {
             pulse_length: 1.5,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 8, "OdometerConfigurationPacket should be 8 bytes");
     }
 
@@ -143,7 +158,9 @@ mod tests {
             permanent: 1,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 1, "SetZeroOrientationAlignmentPacket should be 1 byte");
     }
 
@@ -155,7 +172,9 @@ mod tests {
             offset: OffsetVector { x: 1.0, y: 2.0, z: 3.0 },
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 13, "ReferencePointOffsetsPacket should be 13 bytes");
     }
 
@@ -179,7 +198,9 @@ mod tests {
             dataports: [disabled_entry, tcp_server_entry, disabled_entry, disabled_entry],
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 30, "IpDataportsConfigurationPacket should be exactly 30 bytes");
     }
 
@@ -198,7 +219,9 @@ mod tests {
             dataports: entries,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 30, "IpDataportsConfigurationPacket with all modes should be exactly 30 bytes");
 
         // Verify the packet structure
@@ -226,11 +249,14 @@ mod tests {
         };
 
         // Serialize
-        let bytes: Vec<u8> = original.clone().try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 30, "Serialized packet should be 30 bytes");
 
         // Deserialize
-        let deserialized: IpDataportsConfigurationPacket = bytes.try_into().expect("Failed to deserialize");
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = IpDataportsConfigurationPacket::read_le(&mut cursor).expect("Failed to deserialize");
 
         // Verify round-trip consistency
         assert_eq!(deserialized.reserved, original.reserved);
@@ -248,7 +274,9 @@ mod tests {
             utc_synchronisation: 0,
             packet_timer_period: 1000,
         };
-        let timer_bytes: Vec<u8> = timer_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        timer_packet.write_le(&mut cursor).unwrap();
+        let timer_bytes = cursor.into_inner();
         println!("PacketTimerPeriodPacket (ID 180): Expected 4, Actual {}", timer_bytes.len());
 
         let periods_packet = PacketsPeriodPacket {
@@ -256,7 +284,9 @@ mod tests {
             clear_existing: 0,
             packet_periods: vec![],
         };
-        let periods_bytes: Vec<u8> = periods_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        periods_packet.write_le(&mut cursor).unwrap();
+        let periods_bytes = cursor.into_inner();
         println!("PacketsPeriodPacket (ID 181): Variable length, Empty = {} (binrw format)", periods_bytes.len());
 
         let alignment_packet = InstallationAlignmentPacket {
@@ -266,7 +296,9 @@ mod tests {
             odometer_offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
             external_data_offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
         };
-        let alignment_bytes: Vec<u8> = alignment_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        alignment_packet.write_le(&mut cursor).unwrap();
+        let alignment_bytes = cursor.into_inner();
         println!("InstallationAlignmentPacket (ID 185): Expected 73, Actual {}", alignment_bytes.len());
 
         let filter_packet = FilterOptionsPacket {
@@ -281,7 +313,9 @@ mod tests {
             reserved2: 0,
             reserved3: [0; 8],
         };
-        let filter_bytes: Vec<u8> = filter_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        filter_packet.write_le(&mut cursor).unwrap();
+        let filter_bytes = cursor.into_inner();
         println!("FilterOptionsPacket (ID 186): Expected 17, Actual {}", filter_bytes.len());
 
         let odometer_packet = OdometerConfigurationPacket {
@@ -290,27 +324,35 @@ mod tests {
             reserved: 0,
             pulse_length: 0.0,
         };
-        let odometer_bytes: Vec<u8> = odometer_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        odometer_packet.write_le(&mut cursor).unwrap();
+        let odometer_bytes = cursor.into_inner();
         println!("OdometerConfigurationPacket (ID 192): Expected 8, Actual {}", odometer_bytes.len());
 
         let zero_align_packet = SetZeroOrientationAlignmentPacket {
             permanent: 0,
         };
-        let zero_align_bytes: Vec<u8> = zero_align_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        zero_align_packet.write_le(&mut cursor).unwrap();
+        let zero_align_bytes = cursor.into_inner();
         println!("SetZeroOrientationAlignmentPacket (ID 193): Expected 1, Actual {}", zero_align_bytes.len());
 
         let ref_point_packet = ReferencePointOffsetsPacket {
             permanent: 0,
             offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
         };
-        let ref_point_bytes: Vec<u8> = ref_point_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ref_point_packet.write_le(&mut cursor).unwrap();
+        let ref_point_bytes = cursor.into_inner();
         println!("ReferencePointOffsetsPacket (ID 194): Expected 13, Actual {}", ref_point_bytes.len());
 
         let dataports_packet = IpDataportsConfigurationPacket {
             reserved: 0,
             dataports: [IpDataportEntry { ip_address: 0, port: 0, mode: IpDataportMode::Disabled }; 4],
         };
-        let dataports_bytes: Vec<u8> = dataports_packet.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        dataports_packet.write_le(&mut cursor).unwrap();
+        let dataports_bytes = cursor.into_inner();
         println!("IpDataportsConfigurationPacket (ID 202): Expected 30, Actual {} ✅", dataports_bytes.len());
 
         println!("=== End Summary ===\n");

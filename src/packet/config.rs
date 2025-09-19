@@ -1,6 +1,4 @@
-use crate::error::{AnError, Result};
 use binrw::{BinRead, BinWrite};
-use super::impl_binrw_packet_conversions;
 
 /// Configuration Packets (180-203)
 
@@ -13,7 +11,6 @@ pub struct PacketTimerPeriodPacket {
     pub packet_timer_period: u16,
 }
 
-impl_binrw_packet_conversions!(PacketTimerPeriodPacket);
 
 /// Packets period packet structure (Packet ID 181, Length: 2 + (5 x number of packet periods)) - Read/Write
 /// Format: Permanent (1) | Clear Existing (1) | [Packet ID (1) | Period (4)]...
@@ -43,7 +40,6 @@ pub struct PacketsPeriodPacket {
     pub packet_periods: Vec<PacketPeriodEntry>,
 }
 
-impl_binrw_packet_conversions!(PacketsPeriodPacket);
 
 /// Entry for packets period configuration
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -64,7 +60,6 @@ pub struct InstallationAlignmentPacket {
     pub external_data_offset: OffsetVector,
 }
 
-impl_binrw_packet_conversions!(InstallationAlignmentPacket);
 
 /// 3D offset vector for installation alignment
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -91,7 +86,6 @@ pub struct FilterOptionsPacket {
     pub reserved3: [u8; 8],
 }
 
-impl_binrw_packet_conversions!(FilterOptionsPacket);
 
 /// Vehicle type enumeration for filter options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
@@ -124,7 +118,6 @@ pub struct OdometerConfigurationPacket {
     pub pulse_length: f32,
 }
 
-impl_binrw_packet_conversions!(OdometerConfigurationPacket);
 
 /// Set zero orientation alignment packet structure (Packet ID 193, Length 1) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -133,7 +126,6 @@ pub struct SetZeroOrientationAlignmentPacket {
     pub permanent: u8,
 }
 
-impl_binrw_packet_conversions!(SetZeroOrientationAlignmentPacket);
 
 /// Reference point offsets packet structure (Packet ID 194, Length 13) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -143,7 +135,6 @@ pub struct ReferencePointOffsetsPacket {
     pub offset: OffsetVector,
 }
 
-impl_binrw_packet_conversions!(ReferencePointOffsetsPacket);
 
 /// IP dataports configuration packet structure (Packet ID 202, Length 30) - Read/Write
 /// Contains exactly 4 dataport entries as per ANPP specification
@@ -154,7 +145,6 @@ pub struct IpDataportsConfigurationPacket {
     pub dataports: [IpDataportEntry; 4],
 }
 
-impl_binrw_packet_conversions!(IpDataportsConfigurationPacket);
 
 /// IP dataport entry for IP dataports configuration
 /// Fields: ip_address(u32), port(u16), mode(u8) = 7 bytes per entry

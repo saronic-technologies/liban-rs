@@ -5,7 +5,7 @@ mod tests {
         DeviceInformationPacket, RestoreFactorySettingsPacket,
         ResetPacket, IpConfigurationPacket
     };
-    use std::convert::TryInto;
+    use binrw::{BinRead, BinWrite};
 
     #[test]
     fn test_acknowledge_packet_length() {
@@ -16,7 +16,9 @@ mod tests {
             result: 0,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "AcknowledgePacket should be 4 bytes");
     }
 
@@ -27,7 +29,9 @@ mod tests {
             packet_id: 20,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 1, "RequestPacket should be 1 byte");
         println!("RequestPacket length: {} bytes", bytes.len());
     }
@@ -39,7 +43,9 @@ mod tests {
             boot_mode: 1,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 1, "BootModePacket should be 1 byte");
     }
 
@@ -55,7 +61,9 @@ mod tests {
             serial_number_3: 333333,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 24, "DeviceInformationPacket should be 24 bytes");
     }
 
@@ -67,7 +75,9 @@ mod tests {
         // Verify the verification code is correct
         assert_eq!(packet.verification, 0x85429E1C);
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "RestoreFactorySettingsPacket should be 4 bytes");
     }
 
@@ -79,7 +89,9 @@ mod tests {
         // Verify the verification code is correct
         assert_eq!(packet.verification, 0x21057A7E);
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "ResetPacket should be 4 bytes");
     }
 
@@ -98,7 +110,9 @@ mod tests {
             boreas_serial_number_part_3: 345678,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 30, "IpConfigurationPacket should be exactly 30 bytes");
         println!("IpConfigurationPacket length: {} bytes", bytes.len());
     }
@@ -113,8 +127,11 @@ mod tests {
             packet_crc: 0xABCD,
             result: 2,
         };
-        let ack_bytes: Vec<u8> = ack_original.clone().try_into().unwrap();
-        let ack_deserialized: AcknowledgePacket = ack_bytes.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ack_original.write_le(&mut cursor).unwrap();
+        let ack_bytes = cursor.into_inner();
+        let mut cursor = std::io::Cursor::new(&ack_bytes);
+        let ack_deserialized = AcknowledgePacket::read_le(&mut cursor).unwrap();
         assert_eq!(ack_original, ack_deserialized);
 
         // DeviceInformationPacket round-trip
@@ -126,8 +143,11 @@ mod tests {
             serial_number_2: 321098,
             serial_number_3: 765432,
         };
-        let dev_bytes: Vec<u8> = dev_original.clone().try_into().unwrap();
-        let dev_deserialized: DeviceInformationPacket = dev_bytes.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        dev_original.write_le(&mut cursor).unwrap();
+        let dev_bytes = cursor.into_inner();
+        let mut cursor = std::io::Cursor::new(&dev_bytes);
+        let dev_deserialized = DeviceInformationPacket::read_le(&mut cursor).unwrap();
         assert_eq!(dev_original, dev_deserialized);
 
         // IpConfigurationPacket round-trip
@@ -142,8 +162,11 @@ mod tests {
             boreas_serial_number_part_2: 222222,
             boreas_serial_number_part_3: 333333,
         };
-        let ip_bytes: Vec<u8> = ip_original.clone().try_into().unwrap();
-        let ip_deserialized: IpConfigurationPacket = ip_bytes.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ip_original.write_le(&mut cursor).unwrap();
+        let ip_bytes = cursor.into_inner();
+        let mut cursor = std::io::Cursor::new(&ip_bytes);
+        let ip_deserialized = IpConfigurationPacket::read_le(&mut cursor).unwrap();
         assert_eq!(ip_original, ip_deserialized);
 
         println!("✅ All system packet round-trips successful with binrw");
@@ -160,21 +183,27 @@ mod tests {
             packet_crc: 0,
             result: 0,
         };
-        let ack_bytes: Vec<u8> = ack.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ack.write_le(&mut cursor).unwrap();
+        let ack_bytes = cursor.into_inner();
         println!("AcknowledgePacket (ID 0): Expected 4, Actual {}", ack_bytes.len());
 
         // Test RequestPacket
         let req = RequestPacket {
             packet_id: 0,
         };
-        let req_bytes: Vec<u8> = req.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        req.write_le(&mut cursor).unwrap();
+        let req_bytes = cursor.into_inner();
         println!("RequestPacket (ID 1): Variable length, Actual {}", req_bytes.len());
 
         // Test BootModePacket
         let boot = BootModePacket {
             boot_mode: 0,
         };
-        let boot_bytes: Vec<u8> = boot.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        boot.write_le(&mut cursor).unwrap();
+        let boot_bytes = cursor.into_inner();
         println!("BootModePacket (ID 2): Expected 1, Actual {}", boot_bytes.len());
 
         // Test DeviceInformationPacket
@@ -186,17 +215,23 @@ mod tests {
             serial_number_2: 0,
             serial_number_3: 0,
         };
-        let dev_bytes: Vec<u8> = dev.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        dev.write_le(&mut cursor).unwrap();
+        let dev_bytes = cursor.into_inner();
         println!("DeviceInformationPacket (ID 3): Expected 24, Actual {}", dev_bytes.len());
 
         // Test RestoreFactorySettingsPacket
         let restore = RestoreFactorySettingsPacket::new();
-        let restore_bytes: Vec<u8> = restore.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        restore.write_le(&mut cursor).unwrap();
+        let restore_bytes = cursor.into_inner();
         println!("RestoreFactorySettingsPacket (ID 4): Expected 4, Actual {}", restore_bytes.len());
 
         // Test ResetPacket
         let reset = ResetPacket::new();
-        let reset_bytes: Vec<u8> = reset.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        reset.write_le(&mut cursor).unwrap();
+        let reset_bytes = cursor.into_inner();
         println!("ResetPacket (ID 5): Expected 4, Actual {}", reset_bytes.len());
 
         // Test IpConfigurationPacket
@@ -211,7 +246,9 @@ mod tests {
             boreas_serial_number_part_2: 0,
             boreas_serial_number_part_3: 0,
         };
-        let ip_bytes: Vec<u8> = ip.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        ip.write_le(&mut cursor).unwrap();
+        let ip_bytes = cursor.into_inner();
         println!("IpConfigurationPacket (ID 11): Expected 30, Actual {} (binrw format)", ip_bytes.len());
 
         println!("=== End System Summary ===\n");

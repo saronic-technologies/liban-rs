@@ -4,7 +4,7 @@ mod tests {
         SystemStatePacket, UnixTimePacket, StatusPacket,
         SystemStatusFlags, FilterStatusFlags
     };
-    use std::convert::TryInto;
+    use binrw::{BinRead, BinWrite};
 
     #[test]
     fn test_system_state_packet_length() {
@@ -35,7 +35,9 @@ mod tests {
             height_std_dev: 1.0,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 100, "SystemStatePacket should be 100 bytes");
     }
 
@@ -47,7 +49,9 @@ mod tests {
             microseconds: 123456,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 8, "UnixTimePacket should be 8 bytes");
     }
 
@@ -59,7 +63,9 @@ mod tests {
             filter_status: FilterStatusFlags::ORIENTATION_FILTER_INITIALISED | FilterStatusFlags::HEADING_INITIALISED,
         };
 
-        let bytes: Vec<u8> = packet.try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "StatusPacket should be 4 bytes");
         println!("StatusPacket length: {} bytes", bytes.len());
     }
@@ -94,11 +100,14 @@ mod tests {
         };
 
         // Serialize
-        let bytes: Vec<u8> = original.clone().try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 100, "SystemStatePacket should serialize to 100 bytes");
 
         // Deserialize
-        let deserialized: SystemStatePacket = bytes.try_into().expect("Failed to deserialize");
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = SystemStatePacket::read_le(&mut cursor).expect("Failed to deserialize");
 
         // Verify round-trip consistency
         assert_eq!(deserialized.system_status, original.system_status);
@@ -123,11 +132,14 @@ mod tests {
         };
 
         // Serialize
-        let bytes: Vec<u8> = original.clone().try_into().expect("Failed to serialize");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 8, "UnixTimePacket should serialize to 8 bytes");
 
         // Deserialize
-        let deserialized: UnixTimePacket = bytes.try_into().expect("Failed to deserialize");
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = UnixTimePacket::read_le(&mut cursor).expect("Failed to deserialize");
 
         // Verify round-trip consistency
         assert_eq!(deserialized, original);
@@ -165,7 +177,9 @@ mod tests {
             longitude_std_dev: 0.0,
             height_std_dev: 0.0,
         };
-        let system_state_bytes: Vec<u8> = system_state.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        system_state.write_le(&mut cursor).unwrap();
+        let system_state_bytes = cursor.into_inner();
         println!("SystemStatePacket (ID 20): Expected 100, Actual {}", system_state_bytes.len());
 
         // Test UnixTimePacket
@@ -173,7 +187,9 @@ mod tests {
             unix_time_seconds: 0,
             microseconds: 0,
         };
-        let unix_time_bytes: Vec<u8> = unix_time.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        unix_time.write_le(&mut cursor).unwrap();
+        let unix_time_bytes = cursor.into_inner();
         println!("UnixTimePacket (ID 21): Expected 8, Actual {}", unix_time_bytes.len());
 
         // Test StatusPacket
@@ -181,7 +197,9 @@ mod tests {
             system_status: SystemStatusFlags::empty(),
             filter_status: FilterStatusFlags::empty(),
         };
-        let status_bytes: Vec<u8> = status.try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        status.write_le(&mut cursor).unwrap();
+        let status_bytes = cursor.into_inner();
         println!("StatusPacket (ID 23): Expected 4, Actual {}", status_bytes.len());
 
         println!("=== End State Summary ===\n");

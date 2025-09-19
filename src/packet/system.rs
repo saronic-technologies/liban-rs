@@ -1,6 +1,4 @@
-use crate::error::{AnError, Result};
 use binrw::{BinRead, BinWrite};
-use super::impl_binrw_packet_conversions;
 
 /// System Packets (0-14)
 
@@ -13,7 +11,6 @@ pub struct AcknowledgePacket {
     pub result: u8,
 }
 
-impl_binrw_packet_conversions!(AcknowledgePacket);
 
 /// Request packet structure (Packet ID 1, Variable length) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -22,7 +19,6 @@ pub struct RequestPacket {
     pub packet_id: u8,
 }
 
-impl_binrw_packet_conversions!(RequestPacket);
 
 /// Boot mode packet structure (Packet ID 2, Length 1) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -31,7 +27,6 @@ pub struct BootModePacket {
     pub boot_mode: u8,
 }
 
-impl_binrw_packet_conversions!(BootModePacket);
 
 /// Device information packet structure (Packet ID 3, Length 24) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -45,7 +40,6 @@ pub struct DeviceInformationPacket {
     pub serial_number_3: u32,
 }
 
-impl_binrw_packet_conversions!(DeviceInformationPacket);
 
 
 /// Restore factory settings packet structure (Packet ID 4, Length 4) - Write only
@@ -57,7 +51,6 @@ pub struct RestoreFactorySettingsPacket {
     pub verification: u32, // Verification code (must be 0x85429E1C)
 }
 
-impl_binrw_packet_conversions!(RestoreFactorySettingsPacket);
 
 impl RestoreFactorySettingsPacket {
     /// Create a new restore factory settings packet with the correct verification code
@@ -81,7 +74,6 @@ pub struct ResetPacket {
     pub verification: u32, // Verification code (must be 0x21057A7E)
 }
 
-impl_binrw_packet_conversions!(ResetPacket);
 
 impl ResetPacket {
     /// Create a new reset packet with the correct verification code
@@ -113,7 +105,6 @@ pub struct IpConfigurationPacket {
     pub boreas_serial_number_part_3: u32,
 }
 
-impl_binrw_packet_conversions!(IpConfigurationPacket);
 
 
 #[cfg(test)]
@@ -122,14 +113,17 @@ mod tests {
 
     #[test]
     fn test_reset_packet_try_from_try_into() {
-        // Test serialization and deserialization using TryFrom/TryInto
+        // Test serialization and deserialization using direct binrw
         let original_packet = ResetPacket::new();
 
-        // Serialize using TryInto
-        let serialized: Vec<u8> = original_packet.clone().try_into().unwrap();
+        // Serialize using BinWrite
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original_packet.write_le(&mut cursor).unwrap();
+        let serialized = cursor.into_inner();
 
-        // Deserialize using TryFrom
-        let deserialized = ResetPacket::try_from(serialized.as_slice()).unwrap();
+        // Deserialize using BinRead
+        let mut cursor = std::io::Cursor::new(&serialized);
+        let deserialized = ResetPacket::read_le(&mut cursor).unwrap();
 
         assert_eq!(original_packet, deserialized);
         assert_eq!(deserialized.verification, 0x21057A7E);
@@ -147,11 +141,14 @@ mod tests {
             serial_number_3: 333,
         };
 
-        // Serialize to Vec<u8>
-        let serialized: Vec<u8> = device_info.clone().try_into().unwrap();
+        // Serialize using BinWrite
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        device_info.write_le(&mut cursor).unwrap();
+        let serialized = cursor.into_inner();
 
-        // Test TryFrom<Vec<u8>>
-        let deserialized = DeviceInformationPacket::try_from(serialized).unwrap();
+        // Deserialize using BinRead
+        let mut cursor = std::io::Cursor::new(&serialized);
+        let deserialized = DeviceInformationPacket::read_le(&mut cursor).unwrap();
 
         assert_eq!(device_info, deserialized);
     }
@@ -160,10 +157,13 @@ mod tests {
     fn test_boot_mode_packet_try_from_slice() {
         let boot_mode = BootModePacket { boot_mode: 42 };
 
-        let serialized: Vec<u8> = boot_mode.clone().try_into().unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        boot_mode.write_le(&mut cursor).unwrap();
+        let serialized = cursor.into_inner();
 
-        // Test TryFrom<&[u8]>
-        let deserialized = BootModePacket::try_from(serialized.as_slice()).unwrap();
+        // Test direct binrw deserialization
+        let mut cursor = std::io::Cursor::new(&serialized);
+        let deserialized = BootModePacket::read_le(&mut cursor).unwrap();
 
         assert_eq!(boot_mode, deserialized);
         assert_eq!(deserialized.boot_mode, 42);

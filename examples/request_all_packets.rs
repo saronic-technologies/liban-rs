@@ -4,7 +4,7 @@
 //! every available packet type, printing the response using the Debug trait.
 //! This is useful for exploring what data is available from a device.
 
-use std::convert::TryFrom;
+use binrw::BinRead;
 use std::time::Duration;
 use liban::Result;
 use liban::packet::PacketId;
@@ -48,7 +48,7 @@ impl PacketRequester {
     }
 
     /// Send a raw packet and receive response
-    async fn send_packet(&mut self, packet_id: u8, data: &[u8]) -> Result<(u8, Vec<u8>)> {
+    async fn send_packet(&mut self, packet_id: PacketId, data: &[u8]) -> Result<(u8, Vec<u8>)> {
         // Create and send packet
         let packet = AnppProtocol::create_packet(packet_id, data)?;
 
@@ -75,19 +75,20 @@ impl PacketRequester {
         }
 
         response_buffer.truncate(bytes_read);
-        AnppProtocol::parse_packet(&response_buffer)
+        let (header, data) = AnppProtocol::parse_packet(&response_buffer)?;
+        Ok((header.packet_id.as_u8(), data))
     }
 
     /// Request a specific packet from the device
     async fn request_packet(&mut self, packet_id: PacketId) -> Result<(u8, Vec<u8>)> {
         let request_data = vec![packet_id.as_u8()];
-        self.send_packet(PacketId::Request.as_u8(), &request_data).await
+        self.send_packet(PacketId::new(1), &request_data).await
     }
 
     /// Generic helper to request a packet and parse the response
     async fn request_and_parse<T>(&mut self, packet_id: PacketId, packet_name: &str) -> Result<T>
     where
-        T: TryFrom<Vec<u8>, Error = liban::AnError> + std::fmt::Debug,
+        T: for<'a> BinRead<Args<'a> = ()> + std::fmt::Debug,
     {
         println!("Requesting {} (ID {})...", packet_name, packet_id.as_u8());
 
@@ -104,7 +105,8 @@ impl PacketRequester {
                 // Debug: Show raw packet data
                 println!("Raw packet data ({} bytes): {:02X?}", data.len(), data);
 
-                match T::try_from(data) {
+                let mut cursor = std::io::Cursor::new(&data);
+                match T::read_le(&mut cursor) {
                     Ok(parsed_packet) => {
                         println!("✓ {} received:", packet_name);
                         println!("{:#?}\n", parsed_packet);
@@ -112,7 +114,7 @@ impl PacketRequester {
                     }
                     Err(e) => {
                         println!("✗ Failed to parse {}: {}\n", packet_name, e);
-                        Err(e)
+                        Err(liban::AnError::InvalidPacket(format!("Failed to parse {}: {}", packet_name, e)))
                     }
                 }
             }
@@ -131,12 +133,12 @@ impl PacketRequester {
         println!("--- System Packets ---");
 
         let _ = self.request_and_parse::<DeviceInformationPacket>(
-            PacketId::DeviceInformation,
+            PacketId::new(3),
             "Device Information"
         ).await;
 
         let _ = self.request_and_parse::<BootModePacket>(
-            PacketId::BootMode,
+            PacketId::new(2),
             "Boot Mode"
         ).await;
 
@@ -144,17 +146,17 @@ impl PacketRequester {
         println!("--- State Packets ---");
 
         let _ = self.request_and_parse::<SystemStatePacket>(
-            PacketId::SystemState,
+            PacketId::new(20),
             "System State"
         ).await;
 
         let _ = self.request_and_parse::<UnixTimePacket>(
-            PacketId::UnixTime,
+            PacketId::new(21),
             "Unix Time"
         ).await;
 
         let _ = self.request_and_parse::<StatusPacket>(
-            PacketId::Status,
+            PacketId::new(23),
             "Status"
         ).await;
 
@@ -162,37 +164,37 @@ impl PacketRequester {
         println!("--- Configuration Packets ---");
 
         let _ = self.request_and_parse::<PacketTimerPeriodPacket>(
-            PacketId::PacketTimerPeriod,
+            PacketId::new(180),
             "Packet Timer Period"
         ).await;
 
         let _ = self.request_and_parse::<PacketsPeriodPacket>(
-            PacketId::PacketsPeriod,
+            PacketId::new(181),
             "Packets Period"
         ).await;
 
         let _ = self.request_and_parse::<InstallationAlignmentPacket>(
-            PacketId::InstallationAlignment,
+            PacketId::new(185),
             "Installation Alignment"
         ).await;
 
         let _ = self.request_and_parse::<FilterOptionsPacket>(
-            PacketId::FilterOptions,
+            PacketId::new(186),
             "Filter Options"
         ).await;
 
         let _ = self.request_and_parse::<OdometerConfigurationPacket>(
-            PacketId::OdometerConfiguration,
+            PacketId::new(192),
             "Odometer Configuration"
         ).await;
 
         let _ = self.request_and_parse::<ReferencePointOffsetsPacket>(
-            PacketId::ReferencePointOffsets,
+            PacketId::new(194),
             "Reference Point Offsets"
         ).await;
 
         let _ = self.request_and_parse::<IpDataportsConfigurationPacket>(
-            PacketId::IpDataportsConfiguration,
+            PacketId::new(202),
             "IP Dataports Configuration"
         ).await;
 

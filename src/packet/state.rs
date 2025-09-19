@@ -1,6 +1,4 @@
-use crate::error::{AnError, Result};
 use binrw::{BinRead, BinWrite};
-use super::impl_binrw_packet_conversions;
 use super::flags::{SystemStatusFlags, FilterStatusFlags};
 
 /// State Packets (20-23)
@@ -57,7 +55,6 @@ pub struct SystemStatePacket {
     pub height_std_dev: f32,
 }
 
-impl_binrw_packet_conversions!(SystemStatePacket);
 
 /// Unix time packet structure (Packet ID 21, Length 8) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -67,7 +64,6 @@ pub struct UnixTimePacket {
     pub microseconds: u32,
 }
 
-impl_binrw_packet_conversions!(UnixTimePacket);
 
 /// Status packet structure (Packet ID 23, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
@@ -77,7 +73,6 @@ pub struct StatusPacket {
     pub filter_status: FilterStatusFlags,
 }
 
-impl_binrw_packet_conversions!(StatusPacket);
 
 #[cfg(test)]
 mod tests {
@@ -119,8 +114,11 @@ mod tests {
             height_std_dev: 0.0,
         };
 
-        let serialized: Vec<u8> = system_state.clone().try_into().unwrap();
-        let deserialized = SystemStatePacket::try_from(serialized).unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        system_state.write_le(&mut cursor).unwrap();
+        let serialized = cursor.into_inner();
+        let mut cursor = std::io::Cursor::new(&serialized);
+        let deserialized = SystemStatePacket::read_le(&mut cursor).unwrap();
 
         assert_eq!(system_state, deserialized);
         assert!(deserialized.system_status.contains(SystemStatusFlags::SYSTEM_FAILURE));
@@ -162,8 +160,11 @@ mod tests {
         };
 
         // Test serialization/deserialization roundtrip
-        let serialized: Vec<u8> = system_state.clone().try_into().unwrap();
-        let deserialized = SystemStatePacket::try_from(serialized).unwrap();
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        system_state.write_le(&mut cursor).unwrap();
+        let serialized = cursor.into_inner();
+        let mut cursor = std::io::Cursor::new(&serialized);
+        let deserialized = SystemStatePacket::read_le(&mut cursor).unwrap();
         assert_eq!(system_state, deserialized);
     }
 }

@@ -3,7 +3,7 @@
 //! This example demonstrates how to build an I/O-aware interface on top of the
 //! sans-io liban core library for communicating with Boreas D90 devices.
 
-use std::convert::{TryFrom, TryInto};
+use binrw::{BinRead, BinWrite};
 use liban::{AnError, Result};
 use liban::packet::PacketId;
 use liban::packet::system::{
@@ -105,18 +105,9 @@ impl BoreasInterface {
     }
 
     /// Send a raw packet and receive response
-    pub async fn send_packet(&mut self, packet_id: u8, data: &[u8]) -> Result<(u8, Vec<u8>)> {
+    pub async fn send_packet(&mut self, packet_id: PacketId, data: &[u8]) -> Result<(u8, Vec<u8>)> {
         if !self.connected {
             return Err(AnError::NotConnected);
-        }
-
-        // Check for unimplemented packet IDs 24-89
-        if let Option::None = PacketId::from_u8(packet_id) {
-            warn!(
-                "Packet ID {} is not implemented or does not exist",
-                packet_id
-            );
-            return Err(AnError::UnsupportedPacketId(packet_id));
         }
 
         let stream = self.stream.as_mut().unwrap();
@@ -149,20 +140,21 @@ impl BoreasInterface {
         debug!("Received {} bytes from Boreas device", bytes_read);
 
         // Parse response packet using the sans-io protocol
-        AnppProtocol::parse_packet(&response_buffer)
+        let (header, data) = AnppProtocol::parse_packet(&response_buffer)?;
+        Ok((header.packet_id.as_u8(), data))
     }
 
     /// Request a specific packet from the device
     pub async fn request_packet(&mut self, packet_id: PacketId) -> Result<(u8, Vec<u8>)> {
         let request_data = vec![packet_id.as_u8()];
-        self.send_packet(PacketId::Request.as_u8(), &request_data)
+        self.send_packet(PacketId::new(1), &request_data)
             .await
     }
 
     /// Generic helper to request a packet and parse the response
     async fn request_and_parse<T>(&mut self, packet_id: PacketId) -> Result<T>
     where
-        T: TryFrom<Vec<u8>, Error = AnError>,
+        T: for<'a> BinRead<Args<'a> = ()>,
     {
         let (response_id, data) = self.request_packet(packet_id).await?;
 
@@ -174,7 +166,9 @@ impl BoreasInterface {
             )));
         }
 
-        T::try_from(data)
+        let mut cursor = std::io::Cursor::new(&data);
+        T::read_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize packet: {}", e)))
     }
 
     /// Generic helper to send a packet and parse acknowledge response
@@ -184,34 +178,39 @@ impl BoreasInterface {
         config: T,
     ) -> Result<AcknowledgePacket>
     where
-        T: TryInto<Vec<u8>, Error = AnError>,
+        T: for<'a> BinWrite<Args<'a> = ()>,
     {
-        let data: Vec<u8> = config.try_into()?;
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        config.write_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize config: {}", e)))?;
+        let data = cursor.into_inner();
 
-        let (response_id, response_data) = self.send_packet(packet_id.as_u8(), &data).await?;
+        let (response_id, response_data) = self.send_packet(packet_id, &data).await?;
 
-        if response_id != PacketId::Acknowledge.as_u8() {
+        if response_id != 0 {
             return Err(AnError::Device(
                 "Expected acknowledge packet for configuration".to_string(),
             ));
         }
 
-        AcknowledgePacket::try_from(response_data)
+        let mut cursor = std::io::Cursor::new(&response_data);
+        AcknowledgePacket::read_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize AcknowledgePacket: {}", e)))
     }
 
     /// Get device information
     pub async fn get_device_information(&mut self) -> Result<DeviceInformationPacket> {
-        self.request_and_parse(PacketId::DeviceInformation).await
+        self.request_and_parse(PacketId::new(3)).await
     }
 
     /// Get system state information
     pub async fn get_system_state(&mut self) -> Result<SystemStatePacket> {
-        self.request_and_parse(PacketId::SystemState).await
+        self.request_and_parse(PacketId::new(20)).await
     }
 
     /// Get status information
     pub async fn get_status(&mut self) -> Result<StatusPacket> {
-        self.request_and_parse(PacketId::Status).await
+        self.request_and_parse(PacketId::new(23)).await
     }
 
     /// Reset the device
@@ -219,8 +218,11 @@ impl BoreasInterface {
         info!("Resetting Boreas device");
 
         let reset_packet = ResetPacket::new();
-        let packet_data: Vec<u8> = reset_packet.try_into()?;
-        self.send_packet(PacketId::Reset.as_u8(), &packet_data)
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        reset_packet.write_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize ResetPacket: {}", e)))?;
+        let packet_data = cursor.into_inner();
+        self.send_packet(PacketId::new(5), &packet_data)
             .await?;
 
         // Device will disconnect after reset
@@ -241,8 +243,11 @@ impl BoreasInterface {
         info!("Restoring factory settings - this will re-enable DHCP and lose static IP settings");
 
         let factory_reset_packet = RestoreFactorySettingsPacket::new();
-        let packet_data: Vec<u8> = factory_reset_packet.try_into()?;
-        self.send_packet(PacketId::RestoreFactorySettings.as_u8(), &packet_data)
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        factory_reset_packet.write_le(&mut cursor)
+            .map_err(|e| AnError::InvalidPacket(format!("Failed to serialize RestoreFactorySettingsPacket: {}", e)))?;
+        let packet_data = cursor.into_inner();
+        self.send_packet(PacketId::new(4), &packet_data)
             .await?;
 
         // Device will typically reboot after factory reset
@@ -256,10 +261,10 @@ impl BoreasInterface {
     /// Configure IP settings
     pub async fn configure_ip(&mut self, ip_config: &[u8]) -> Result<AcknowledgePacket> {
         let (response_id, data) = self
-            .send_packet(PacketId::IpConfiguration.as_u8(), ip_config)
+            .send_packet(PacketId::new(11), ip_config)
             .await?;
 
-        if response_id != PacketId::Acknowledge.as_u8() {
+        if response_id != 0 {
             return Err(AnError::Device(
                 "Expected acknowledge packet for IP configuration".to_string(),
             ));
@@ -283,9 +288,9 @@ impl BoreasInterface {
     pub async fn set_configuration(&mut self, config_data: &[u8]) -> Result<AcknowledgePacket> {
         // This would send configuration commands specific to Boreas D90
         // The actual packet format would depend on the specific configuration being set
-        let (response_id, data) = self.send_packet(20, config_data).await?; // Using system state packet ID as example
+        let (response_id, data) = self.send_packet(PacketId::new(20), config_data).await?; // Using system state packet ID as example
 
-        if response_id != PacketId::Acknowledge.as_u8() {
+        if response_id != 0 {
             return Err(AnError::Device(
                 "Expected acknowledge packet for configuration".to_string(),
             ));
@@ -307,13 +312,13 @@ impl BoreasInterface {
 
     /// Get Unix time
     pub async fn get_unix_time(&mut self) -> Result<UnixTimePacket> {
-        self.request_and_parse(PacketId::UnixTime).await
+        self.request_and_parse(PacketId::new(21)).await
     }
 
     // Configuration packets (180-203)
     /// Get packet timer period configuration
     pub async fn get_packet_timer_period(&mut self) -> Result<PacketTimerPeriodPacket> {
-        self.request_and_parse(PacketId::PacketTimerPeriod).await
+        self.request_and_parse(PacketId::new(180)).await
     }
 
     /// Set packet timer period configuration
@@ -321,30 +326,30 @@ impl BoreasInterface {
         &mut self,
         config: PacketTimerPeriodPacket,
     ) -> Result<AcknowledgePacket> {
-        self.send_and_acknowledge(PacketId::PacketTimerPeriod, config)
+        self.send_and_acknowledge(PacketId::new(180), config)
             .await
     }
 
     /// Get installation alignment configuration
     pub async fn get_installation_alignment(&mut self) -> Result<InstallationAlignmentPacket> {
-        self.request_and_parse(PacketId::InstallationAlignment)
+        self.request_and_parse(PacketId::new(185))
             .await
     }
 
     /// Get filter options configuration
     pub async fn get_filter_options(&mut self) -> Result<FilterOptionsPacket> {
-        self.request_and_parse(PacketId::FilterOptions).await
+        self.request_and_parse(PacketId::new(186)).await
     }
 
     /// Get odometer configuration
     pub async fn get_odometer_configuration(&mut self) -> Result<OdometerConfigurationPacket> {
-        self.request_and_parse(PacketId::OdometerConfiguration)
+        self.request_and_parse(PacketId::new(192))
             .await
     }
 
     /// Get reference point offsets configuration
     pub async fn get_reference_point_offsets(&mut self) -> Result<ReferencePointOffsetsPacket> {
-        self.request_and_parse(PacketId::ReferencePointOffsets)
+        self.request_and_parse(PacketId::new(194))
             .await
     }
 
@@ -352,7 +357,7 @@ impl BoreasInterface {
     pub async fn get_ip_dataports_configuration(
         &mut self,
     ) -> Result<IpDataportsConfigurationPacket> {
-        self.request_and_parse(PacketId::IpDataportsConfiguration)
+        self.request_and_parse(PacketId::new(202))
             .await
     }
 
