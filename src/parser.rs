@@ -30,8 +30,12 @@ fn calculate_lrc(packet_id: u8, length: u8, crc16: u16) -> u8 {
     let crc_low = (crc16 & 0xFF) as u8;
     let crc_high = ((crc16 >> 8) & 0xFF) as u8;
 
-    // XOR all bytes together
-    packet_id ^ length ^ crc_low ^ crc_high
+    // Use wrapping arithmetic to handle overflow
+    let sum = packet_id
+        .wrapping_add(length)
+        .wrapping_add(crc_low)
+        .wrapping_add(crc_high);
+    (sum ^ 0xFF).wrapping_add(1)
 }
 
 fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
@@ -196,10 +200,16 @@ mod tests {
     #[test]
     fn test_lrc_calculation() {
         // Test LRC calculation with known values
-        let packet_id = 1;
-        let length = 6;
-        let crc16 = 0x1234;
-        let expected_lrc = packet_id ^ length ^ 0x34 ^ 0x12;
+        let packet_id: u8 = 1;
+        let length: u8 = 6;
+        let crc16: u16 = 0x1234;
+
+        // Calculate expected LRC using the actual ANPP algorithm
+        let crc_low = (crc16 & 0xFF) as u8;  // 0x34
+        let crc_high = ((crc16 >> 8) & 0xFF) as u8; // 0x12
+        let sum = packet_id.wrapping_add(length).wrapping_add(crc_low).wrapping_add(crc_high);
+        let expected_lrc = (sum ^ 0xFF).wrapping_add(1);
+
         assert_eq!(calculate_lrc(packet_id, length, crc16), expected_lrc);
     }
 
