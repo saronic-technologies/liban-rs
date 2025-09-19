@@ -2,8 +2,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use crate::{AnppPacket, PacketKind};
-
-use crc::{Crc, CRC_16_IBM_3740};
+use crate::protocol::AnppProtocol;
 
 use tracing::debug;
 
@@ -25,7 +24,6 @@ type Result<T> = core::result::Result<(T, usize), ParseError>;
 
 // Constants for our parser
 const MIN_PACKET_SIZE: usize = 5; // 1 LRC + 1 ID + 1 length + 2 CRC16
-const ANPP_CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 
 /// Calculate the Linear Redundancy Check (LRC) for ANPP header
 fn calculate_lrc(packet_id: u8, length: u8, crc16: u16) -> u8 {
@@ -47,7 +45,31 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     let header_lrc = input[0];
     let packet_id = input[1];
     let payload_length = input[2];
-    let packet_length = payload_length + 5; // length in packet does not include header4
+
+    // Basic sanity check on packet length
+    if payload_length > 100 { // ANPP packets are typically much smaller
+        debug!("Payload length {} seems too large, probably invalid data", payload_length);
+        return Err(ParseError::InvalidHeader);
+    }
+
+    // Check if this is a supported packet type
+    let packet_kind = PacketKind::from(packet_id);
+    if let PacketKind::Unsupported = packet_kind {
+        debug!("Unsupported packet ID: {}", packet_id);
+        // For unsupported packets, we still return them as Unsupported variant
+        return Err(ParseError::InvalidHeader);
+    }
+
+    // Validate payload length matches expected length for this packet type
+    if let Some(expected_length) = packet_kind.byte_length() {
+        if payload_length as usize != expected_length {
+            debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
+                   packet_id, expected_length, payload_length);
+            return Err(ParseError::InvalidPayload);
+        }
+    }
+
+    let packet_length = payload_length + 5; // length in packet does not include header
 
     // Ensure we have the complete packet
     if input.len() < packet_length as usize {
@@ -69,31 +91,10 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     // Extract payload (everything between header and CRC16)
     let payload_start = 5;
     let payload_end = packet_length as usize;
-    let payload = input[payload_start..payload_end].to_vec();
+    let payload = &input[payload_start..payload_end];
 
     // Validate packet CRC16 (calculated over packet ID + length + payload)
-    // let mut crc_data = Vec::with_capacity(2 + payload.len());
-    // crc_data.extend_from_slice(&payload);
-
-    // Check if this is a supported packet type
-    let packet_kind = PacketKind::from(packet_id);
-    if let PacketKind::Unsupported = packet_kind {
-        debug!("Unsupported packet ID: {}", packet_id);
-        // For unsupported packets, we still return them as Unsupported variant
-        return Ok((AnppPacket::Unsupported(payload), payload_length as usize));
-    }
-
-    // Validate payload length matches expected length for this packet type
-    if let Some(expected_length) = packet_kind.byte_length() {
-        let expected_payload_length = expected_length - 5; // Subtract header size
-        if payload.len() != expected_payload_length {
-            debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
-                   packet_id, expected_payload_length, payload.len());
-            return Err(ParseError::InvalidPayload);
-        }
-    }
-
-    let calculated_crc = ANPP_CRC.checksum(&payload);
+    let calculated_crc = AnppProtocol::calculate_crc16(payload);
     if crc16 != calculated_crc {
         debug!("Invalid CRC16 for packet ID {}: expected {:#04x}, got {:#04x}",
                packet_id, calculated_crc, crc16);
@@ -112,12 +113,14 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
 
 pub struct AnppParser {
     buf: Vec<u8>,
+    buf_start: usize, // Start position of valid data in buffer
 }
 
 impl AnppParser {
     pub fn new() -> Self {
         Self {
             buf: Vec::new(),
+            buf_start: 0,
         }
     }
 
@@ -125,24 +128,40 @@ impl AnppParser {
     /// find a complete packet we return None. If we get a packet it doesn't
     /// guarantee the whole internal buffer is drained.
     pub fn consume(&mut self, input: &[u8]) -> Option<AnppPacket> {
+        // Append new data to buffer
         self.buf.extend(input);
+
         loop {
-            debug!("Internal Buffer Size: {}", self.buf.len());
-            match parse_packet(&self.buf) {
+            let available_data = &self.buf[self.buf_start..];
+
+            if available_data.is_empty() {
+                return None;
+            }
+
+            match parse_packet(available_data) {
                 Ok((packet, bytes_consumed)) => {
-                    debug!("Successfully parsed packet, draining {} bytes from buffer", bytes_consumed);
-                    self.buf.drain(0..bytes_consumed);
+                    // Advance buffer start position instead of draining
+                    self.buf_start += bytes_consumed;
+
+                    // Compact buffer if it gets too fragmented
+                    if self.buf_start > self.buf.len() / 2 {
+                        self.buf.drain(0..self.buf_start);
+                        self.buf_start = 0;
+                    }
+
                     return Some(packet);
                 },
                 Err(ParseError::IncompleteData) => {
-                    debug!("Incomplete data, need more bytes!");
                     return None;
                 }
                 Err(ParseError::InvalidCRC | ParseError::InvalidHeader | ParseError::InvalidPayload) => {
-                    debug!("Parse error, advancing buffer by 1 byte to find next valid packet");
-                    if !self.buf.is_empty() {
-                        self.buf.drain(0..1);
-                    } else {
+                    // Advance by 1 byte to find next valid packet
+                    self.buf_start += 1;
+
+                    // Ensure we don't go past buffer end
+                    if self.buf_start >= self.buf.len() {
+                        self.buf.clear();
+                        self.buf_start = 0;
                         return None;
                     }
                 }
@@ -152,12 +171,13 @@ impl AnppParser {
 
     /// Get the current buffer length (for debugging/monitoring)
     pub fn buffer_len(&self) -> usize {
-        self.buf.len()
+        self.buf.len() - self.buf_start
     }
 
     /// Clear the internal buffer
     pub fn clear(&mut self) {
         self.buf.clear();
+        self.buf_start = 0;
     }
 }
 

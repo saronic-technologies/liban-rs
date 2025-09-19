@@ -45,6 +45,39 @@ The library implements the following ANPP (Advanced Navigation Packet Protocol) 
 - **Little-endian**: All multi-byte values
 - **Maximum payload**: 255 bytes
 
+## Examples
+
+The library includes several examples demonstrating different ways to read ANPP data:
+
+### TCP Stream Reader
+Read ANPP packets from a TCP connection:
+```bash
+cargo run --example stream_reader <host> <port>
+cargo run --example stream_reader 192.168.1.100 55555
+cargo run --example stream_reader localhost 8080
+```
+
+### UDP Reader
+Listen for ANPP packets on a UDP port:
+```bash
+cargo run --example udp_reader <port>
+cargo run --example udp_reader 55555
+cargo run --example udp_reader 0.0.0.0:55555
+```
+
+### File Reader
+Parse ANPP packets from a binary file:
+```bash
+cargo run --example file_reader <filename>
+cargo run --example file_reader data/anpp_capture.bin
+```
+
+All examples will:
+- Print detailed debug information for each packet
+- Show packet-specific data (position, velocity, device info, etc.)
+- Provide session statistics
+- Handle errors gracefully
+
 ## Testing
 
 Run tests with:

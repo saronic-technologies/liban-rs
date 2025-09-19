@@ -7,6 +7,7 @@ pub mod error;
 pub mod packet;
 pub mod parser;
 pub mod protocol;
+pub mod reader;
 
 pub use error::{AnError, Result};
 pub use packet::{PacketId, PacketKind, AnppPacket, AnppHeader};
@@ -45,3 +46,4 @@ pub use packet::config::{
 };
 pub use parser::AnppParser;
 pub use protocol::AnppProtocol;
+pub use reader::AnppReader;

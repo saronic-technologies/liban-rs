@@ -149,7 +149,7 @@ impl AnppProtocol {
     /// Parse raw bytes into AnppPacket enum
     pub fn parse_anpp_packet(packet: &[u8]) -> Result<AnppPacket> {
         let (header, data) = Self::parse_packet(packet)?;
-        AnppPacket::from_bytes(header.packet_id.as_u8(), data)
+        AnppPacket::from_bytes(header.packet_id.as_u8(), &data)
     }
 
     /// Create a request packet for the specified packet ID

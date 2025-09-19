@@ -107,19 +107,19 @@ macro_rules! define_packets {
                 }
 
                 /// Parse a packet from raw bytes
-                pub fn from_bytes(packet_id: u8, data: Vec<u8>) -> Result<Self> {
+                pub fn from_bytes(packet_id: u8, data: &[u8]) -> Result<Self> {
                     use binrw::BinRead;
                     use std::io::Cursor;
 
                     let packet = match PacketKind::from(packet_id) {
                         $(
                             PacketKind::$variant => {
-                                let mut cursor = Cursor::new(&data);
+                                let mut cursor = Cursor::new(data);
                                 AnppPacket::$variant([<$variant Packet>]::read_le(&mut cursor)
                                     .map_err(|e| AnError::InvalidPacket(format!("Failed to deserialize {}: {}", stringify!([<$variant Packet>]), e)))?)
                             },
                         )+
-                        PacketKind::Unsupported => AnppPacket::Unsupported(data),
+                        PacketKind::Unsupported => AnppPacket::Unsupported(data.to_vec()),
                     };
                     Ok(packet)
                 }
