@@ -78,7 +78,7 @@ macro_rules! define_packets {
             }
 
             /// Detailed enum that holds the associated payload
-            #[derive(Debug)]
+            #[derive(Debug, Clone)]
             pub enum AnppPacket {
                 $( $variant([<$variant Packet>]), )+
                 Unsupported(Vec<u8>),
