@@ -1,5 +1,5 @@
 use crate::error::{AnError, Result};
-use crate::packet::{PacketId, AnppHeader, AnppPacket};
+use crate::packet::{PacketId, AnppHeader, AnppPacket, system::RequestPacket};
 use crc::{Crc, Algorithm};
 use binrw::{BinRead, BinWrite};
 use std::io::Cursor;
@@ -26,7 +26,7 @@ impl AnppProtocol {
     }
 
     /// Create an ANPP packet from structured components
-    pub fn create_packet(packet_id: PacketId, data: &[u8]) -> Result<Vec<u8>> {
+    pub fn get_packet_bytes(packet_id: PacketId, data: &[u8]) -> Result<Vec<u8>> {
         if data.len() > 255 {
             return Err(AnError::PacketTooLong(data.len()));
         }
@@ -58,7 +58,7 @@ impl AnppProtocol {
     }
 
     /// Parse an ANPP packet and return structured header with data
-    pub fn parse_packet(packet: &[u8]) -> Result<(AnppHeader, Vec<u8>)> {
+    pub fn get_header_from_bytes(packet: &[u8]) -> Result<(AnppHeader, Vec<u8>)> {
         if packet.len() < 5 {
             return Err(AnError::InvalidPacket(
                 "Packet too short (minimum 5 bytes)".to_string(),
@@ -140,22 +140,23 @@ impl AnppProtocol {
     }
 
     /// Create an ANPP packet from AnppPacket enum
-    pub fn create_anpp_packet(packet: AnppPacket) -> Result<Vec<u8>> {
+    pub fn get_bytes_from_packet(packet: AnppPacket) -> Result<Vec<u8>> {
         let packet_id = PacketId::new(packet.packet_id());
         let data = packet.to_bytes()?;
-        Self::create_packet(packet_id, &data)
+        Self::get_packet_bytes(packet_id, &data)
     }
 
     /// Parse raw bytes into AnppPacket enum
-    pub fn parse_anpp_packet(packet: &[u8]) -> Result<AnppPacket> {
-        let (header, data) = Self::parse_packet(packet)?;
+    pub fn parse_bytes(packet: &[u8]) -> Result<AnppPacket> {
+        let (header, data) = Self::get_header_from_bytes(packet)?;
         AnppPacket::from_bytes(header.packet_id.as_u8(), &data)
     }
 
     /// Create a request packet for the specified packet ID
-    pub fn create_request_packet(requested_packet_id: PacketId) -> Result<Vec<u8>> {
-        let request_data = vec![requested_packet_id.as_u8()];
-        Self::create_packet(PacketId::new(1), &request_data)
+    pub fn create_request_packet(requested_packet_id: PacketId) -> RequestPacket {
+        RequestPacket {
+            packet_id: requested_packet_id.as_u8()
+        }
     }
 }
 
