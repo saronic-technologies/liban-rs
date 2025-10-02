@@ -39,6 +39,9 @@ pub struct AnppHeader {
     pub length: u8,
     pub crc16: u16,
 }
+pub trait Packet {
+    const PACKET_ID: PacketId;
+}
 
 // Import packet types from their respective modules
 use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
@@ -51,6 +54,12 @@ use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignment
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
         paste::paste! {
+            $(
+                impl Packet for [<$variant Packet>] {
+                    const PACKET_ID: PacketId = PacketId { id: $code };
+                }
+            )+
+
             /// Core enum that represents the packet kind
             #[derive(Debug, Copy, Clone, PartialEq, Eq)]
             pub enum PacketKind {
