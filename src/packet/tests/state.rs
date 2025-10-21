@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        SystemStatePacket, UnixTimePacket, StatusPacket,
+        SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket,
         SystemStatusFlags, FilterStatusFlags
     };
     use binrw::{BinRead, BinWrite};
@@ -146,7 +146,46 @@ mod tests {
         println!("✅ UnixTimePacket round-trip successful with binrw");
     }
 
-    #[test] 
+    #[test]
+    fn test_euler_orientation_std_dev_packet_length() {
+        // Packet ID 26, Length 12
+        let packet = EulerOrientationStdDevPacket {
+            roll_std_dev: 0.01,
+            pitch_std_dev: 0.015,
+            heading_std_dev: 0.02,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 12, "EulerOrientationStdDevPacket should be 12 bytes");
+    }
+
+    #[test]
+    fn test_euler_orientation_std_dev_packet_round_trip() {
+        // Test that EulerOrientationStdDevPacket serialization/deserialization works correctly
+        let original = EulerOrientationStdDevPacket {
+            roll_std_dev: 0.0523599,  // ~3 degrees in radians
+            pitch_std_dev: 0.0349066, // ~2 degrees in radians
+            heading_std_dev: 0.0872665, // ~5 degrees in radians
+        };
+
+        // Serialize
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 12, "EulerOrientationStdDevPacket should serialize to 12 bytes");
+
+        // Deserialize
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = EulerOrientationStdDevPacket::read_le(&mut cursor).expect("Failed to deserialize");
+
+        // Verify round-trip consistency
+        assert_eq!(deserialized, original);
+        println!("✅ EulerOrientationStdDevPacket round-trip successful with binrw");
+    }
+
+    #[test]
     fn test_state_packet_size_summary() {
         // Summary test that prints all state packet sizes for reference
         println!("\n=== State Packet Size Summary ===");
@@ -201,6 +240,17 @@ mod tests {
         status.write_le(&mut cursor).unwrap();
         let status_bytes = cursor.into_inner();
         println!("StatusPacket (ID 23): Expected 4, Actual {}", status_bytes.len());
+
+        // Test EulerOrientationStdDevPacket
+        let euler_std_dev = EulerOrientationStdDevPacket {
+            roll_std_dev: 0.0,
+            pitch_std_dev: 0.0,
+            heading_std_dev: 0.0,
+        };
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        euler_std_dev.write_le(&mut cursor).unwrap();
+        let euler_std_dev_bytes = cursor.into_inner();
+        println!("EulerOrientationStdDevPacket (ID 26): Expected 12, Actual {}", euler_std_dev_bytes.len());
 
         println!("=== End State Summary ===\n");
     }

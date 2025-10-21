@@ -46,7 +46,7 @@ pub trait Packet {
 // Import packet types from their respective modules
 use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
             RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket};
-use state::{SystemStatePacket, UnixTimePacket, StatusPacket};
+use state::{SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket};
 use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignmentPacket,
             FilterOptionsPacket, OdometerConfigurationPacket, SetZeroOrientationAlignmentPacket,
             ReferencePointOffsetsPacket, IpDataportsConfigurationPacket};
@@ -165,10 +165,11 @@ define_packets!(
     Reset => 5, Some(4),
     IpConfiguration => 11, Some(30),
 
-    // State Packets (20-23)
+    // State Packets (20-26)
     SystemState => 20, Some(100),
     UnixTime => 21, Some(8),
     Status => 23, Some(4),
+    EulerOrientationStdDev => 26, Some(12),
 
     // Configuration Packets (180-203)
     PacketTimerPeriod => 180, Some(4),

@@ -17,11 +17,12 @@ The library implements the following ANPP (Advanced Navigation Packet Protocol) 
 - **IpConfigurationPacket** (ID 11) - Network configuration settings with IP address conversion
 - **SubcomponentInformationPacket** (ID 14) - Subcomponent details
 
-### State Packets (20-23)
+### State Packets (20-26)
 - **SystemState** (ID 20) - Complete navigation state (position, velocity, attitude, accelerations) with status interpretation
 - **UnixTimePacket** (ID 21) - Unix timestamp with microsecond precision
 - **FormattedTimePacket** (ID 22) - Human-readable date/time breakdown
 - **StatusPacket** (ID 23) - System and filter status flags with comprehensive bit interpretation
+- **EulerOrientationStdDevPacket** (ID 26) - Euler orientation standard deviations (roll, pitch, heading) in radians
 
 ### Configuration Packets (180-202)
 - **PacketTimerPeriodPacket** (ID 180) - Packet transmission timer period with UTC synchronization support

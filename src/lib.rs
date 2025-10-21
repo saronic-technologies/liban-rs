@@ -21,6 +21,7 @@ pub use packet::system::{
     RestoreFactorySettingsPacket,
 };
 pub use packet::state::{
+    EulerOrientationStdDevPacket,
     StatusPacket,
     SystemStatePacket,
     UnixTimePacket,

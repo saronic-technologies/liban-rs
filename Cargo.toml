@@ -2,7 +2,7 @@
 description = "Advanced Navigation Packet Protocol library for Boreas D90 connectivity"
 edition = "2021"
 name = "liban"
-version = "0.2.3"
+version = "0.2.4"
 
 [dependencies]
 binrw = "0.13"

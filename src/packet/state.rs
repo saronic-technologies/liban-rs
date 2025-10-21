@@ -74,6 +74,19 @@ pub struct StatusPacket {
 }
 
 
+/// Euler Orientation Standard Deviation packet structure (Packet ID 26, Length 12) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct EulerOrientationStdDevPacket {
+    /// Roll standard deviation in radians (Field 1)
+    pub roll_std_dev: f32,
+    /// Pitch standard deviation in radians (Field 2)
+    pub pitch_std_dev: f32,
+    /// Heading standard deviation in radians (Field 3)
+    pub heading_std_dev: f32,
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
