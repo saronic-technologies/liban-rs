@@ -25,6 +25,7 @@ pub use packet::state::{
     HeavePacket,
     RawSensorsPacket,
     SatellitesPacket,
+    SensorTemperaturePacket,
     StatusPacket,
     SystemStatePacket,
     UnixTimePacket,
