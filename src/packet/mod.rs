@@ -47,7 +47,7 @@ pub trait Packet {
 use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
             RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket};
 use state::{SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket,
-            RawSensorsPacket, HeavePacket};
+            RawSensorsPacket, SatellitesPacket, HeavePacket};
 use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignmentPacket,
             FilterOptionsPacket, OdometerConfigurationPacket, SetZeroOrientationAlignmentPacket,
             ReferencePointOffsetsPacket, IpDataportsConfigurationPacket};
@@ -166,12 +166,13 @@ define_packets!(
     Reset => 5, Some(4),
     IpConfiguration => 11, Some(30),
 
-    // State Packets (20-28, 58)
+    // State Packets (20-30, 58)
     SystemState => 20, Some(100),
     UnixTime => 21, Some(8),
     Status => 23, Some(4),
     EulerOrientationStdDev => 26, Some(12),
     RawSensors => 28, Some(48),
+    Satellites => 30, Some(13),
     Heave => 58, Some(16),
 
     // Configuration Packets (180-203)
