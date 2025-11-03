@@ -15,7 +15,7 @@ The library implements the following packets:
 - **ResetPacket** (ID 5) - Device reset command with verification 0x21057A7E
 - **IpConfigurationPacket** (ID 11) - Network configuration settings with IP address conversion
 
-### State Packets (20-85)
+### State Packets (20-89)
 - **SystemStatePacket** (ID 20) - Complete navigation state (position, velocity, attitude, accelerations) with status interpretation
 - **UnixTimePacket** (ID 21) - Unix timestamp with microsecond precision
 - **StatusPacket** (ID 23) - System and filter status flags with comprehensive bit interpretation
@@ -25,7 +25,7 @@ The library implements the following packets:
 - **HeavePacket** (ID 58) - Heave measurements at 4 reference points in meters
 - **SensorTemperaturePacket** (ID 85) - Temperature readings from accelerometer, gyroscope, and pressure sensors
 
-### Configuration Packets (180-202)
+### Configuration Packets (180-203)
 - **PacketTimerPeriodPacket** (ID 180) - Packet transmission timer period with UTC synchronization support
 - **PacketsPeriodPacket** (ID 181) - Individual packet transmission rates with variable length
 - **InstallationAlignmentPacket** (ID 185) - Device mounting alignment parameters
