@@ -87,6 +87,27 @@ pub struct EulerOrientationStdDevPacket {
 }
 
 
+/// Satellites packet structure (Packet ID 30, Length 13) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct SatellitesPacket {
+    /// Horizontal Dilution of Precision (Field 1)
+    pub hdop: f32,
+    /// Vertical Dilution of Precision (Field 2)
+    pub vdop: f32,
+    /// GPS satellites (Field 3)
+    pub gps_satellites: u8,
+    /// GLONASS satellites (Field 4)
+    pub glonass_satellites: u8,
+    /// BeiDou satellites (Field 5)
+    pub beidou_satellites: u8,
+    /// Galileo satellites (Field 6)
+    pub galileo_satellites: u8,
+    /// SBAS satellites (Field 7)
+    pub sbas_satellites: u8,
+}
+
+
 /// Heave packet structure (Packet ID 58, Length 16) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
 #[brw(little)]

@@ -24,6 +24,7 @@ pub use packet::state::{
     EulerOrientationStdDevPacket,
     HeavePacket,
     RawSensorsPacket,
+    SatellitesPacket,
     StatusPacket,
     SystemStatePacket,
     UnixTimePacket,
