@@ -1,28 +1,29 @@
 # liban - Advanced Navigation Library
 
-A comprehensive Rust library for communicating with Advanced Navigation devices using the Advanced Navigation Packet Protocol (ANPP)
+A comprehensive Rust library for communicating with Advanced Navigation devices using the [Advanced Navigation Packet Protocol (ANPP)](https://docs.advancednavigation.com/boreas-d/ANPP/Advanced%20Navigation%20Packet.htm).
 
 ## Supported Packet Types
 
-The library implements the following ANPP (Advanced Navigation Packet Protocol) packets:
+The library implements the following packets:
 
 ### System Packets (0-14)
 - **AcknowledgePacket** (ID 0) - Device command acknowledgments
-- **RequestPacket** (ID 1) - Request specific packet types from device  
+- **RequestPacket** (ID 1) - Request specific packet types from device
 - **BootModePacket** (ID 2) - Device boot mode control
-- **DeviceInformation** (ID 3) - Hardware/software version info and 3-part serial number
+- **DeviceInformationPacket** (ID 3) - Hardware/software version info and 3-part serial number
 - **RestoreFactorySettingsPacket** (ID 4) - Factory reset command with verification 0x85429E1C (re-enables DHCP)
 - **ResetPacket** (ID 5) - Device reset command with verification 0x21057A7E
-- **SerialPortPassthroughPacket** (ID 10) - Serial port data passthrough
 - **IpConfigurationPacket** (ID 11) - Network configuration settings with IP address conversion
-- **SubcomponentInformationPacket** (ID 14) - Subcomponent details
 
-### State Packets (20-26)
-- **SystemState** (ID 20) - Complete navigation state (position, velocity, attitude, accelerations) with status interpretation
+### State Packets (20-85)
+- **SystemStatePacket** (ID 20) - Complete navigation state (position, velocity, attitude, accelerations) with status interpretation
 - **UnixTimePacket** (ID 21) - Unix timestamp with microsecond precision
-- **FormattedTimePacket** (ID 22) - Human-readable date/time breakdown
 - **StatusPacket** (ID 23) - System and filter status flags with comprehensive bit interpretation
 - **EulerOrientationStdDevPacket** (ID 26) - Euler orientation standard deviations (roll, pitch, heading) in radians
+- **RawSensorsPacket** (ID 28) - Raw accelerometer, gyroscope, IMU temperature, pressure sensor data
+- **SatellitesPacket** (ID 30) - HDOP, VDOP, and satellite counts per constellation (GPS, GLONASS, Beidou, Galileo, SBAS)
+- **HeavePacket** (ID 58) - Heave measurements at 4 reference points in meters
+- **SensorTemperaturePacket** (ID 85) - Temperature readings from accelerometer, gyroscope, and pressure sensors
 
 ### Configuration Packets (180-202)
 - **PacketTimerPeriodPacket** (ID 180) - Packet transmission timer period with UTC synchronization support
