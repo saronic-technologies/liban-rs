@@ -123,6 +123,29 @@ pub struct HeavePacket {
 }
 
 
+/// Sensor temperature packet structure (Packet ID 85, Length 32) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct SensorTemperaturePacket {
+    /// Accelerometer temperature - axis 0 in deg C (Field 1[0])
+    pub accelerometer_temp_0: f32,
+    /// Accelerometer temperature - axis 1 in deg C (Field 1[1])
+    pub accelerometer_temp_1: f32,
+    /// Accelerometer temperature - axis 2 in deg C (Field 1[2])
+    pub accelerometer_temp_2: f32,
+    /// Gyroscope temperature - axis 0 in deg C (Field 2[0])
+    pub gyroscope_temp_0: f32,
+    /// Gyroscope temperature - axis 1 in deg C (Field 2[1])
+    pub gyroscope_temp_1: f32,
+    /// Gyroscope temperature - axis 2 in deg C (Field 2[2])
+    pub gyroscope_temp_2: f32,
+    /// Reserved (Field 3)
+    pub reserved: f32,
+    /// Pressure sensor temperature in deg C (Field 4)
+    pub pressure_sensor_temp: f32,
+}
+
+
 /// Raw sensors packet structure (Packet ID 28, Length 48) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
