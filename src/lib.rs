@@ -25,6 +25,7 @@ pub use packet::state::{
     StatusPacket,
     SystemStatePacket,
     UnixTimePacket,
+    RawSensorsPacket,
 };
 pub use packet::flags::{
     FilterStatusFlags,
