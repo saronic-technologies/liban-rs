@@ -1,8 +1,12 @@
 [package]
-description = "Advanced Navigation Packet Protocol library for Boreas D90 connectivity"
+description = "A library to parse Advanced Navigation Packet Protocol messages"
 edition = "2021"
 name = "liban"
-version = "0.2.5"
+version = "0.3.0"
+license = "MPL-2.0"
+homepage = "https://github.com/saronic-technologies/liban-rs"
+repository = "https://github.com/saronic-technologies/liban-rs"
+readme = "README.md"
 
 [dependencies]
 binrw = "0.13"
