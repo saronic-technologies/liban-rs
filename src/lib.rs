@@ -22,10 +22,11 @@ pub use packet::system::{
 };
 pub use packet::state::{
     EulerOrientationStdDevPacket,
+    HeavePacket,
+    RawSensorsPacket,
     StatusPacket,
     SystemStatePacket,
     UnixTimePacket,
-    RawSensorsPacket,
 };
 pub use packet::flags::{
     FilterStatusFlags,
