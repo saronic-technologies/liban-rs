@@ -87,6 +87,21 @@ pub struct EulerOrientationStdDevPacket {
 }
 
 
+/// Heave packet structure (Packet ID 58, Length 16) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct HeavePacket {
+    /// Heave point 1 in meters (Field 1)
+    pub heave_point_1: f32,
+    /// Heave point 2 in meters (Field 2)
+    pub heave_point_2: f32,
+    /// Heave point 3 in meters (Field 3)
+    pub heave_point_3: f32,
+    /// Heave point 4 in meters (Field 4)
+    pub heave_point_4: f32,
+}
+
+
 /// Raw sensors packet structure (Packet ID 28, Length 48) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
 #[brw(little)]
