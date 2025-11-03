@@ -87,6 +87,37 @@ pub struct EulerOrientationStdDevPacket {
 }
 
 
+/// Raw sensors packet structure (Packet ID 28, Length 48) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[brw(little)]
+pub struct RawSensorsPacket {
+    /// Accelerometer X in m/s/s (Field 1)
+    pub accelerometer_x: f32,
+    /// Accelerometer Y in m/s/s (Field 2)
+    pub accelerometer_y: f32,
+    /// Accelerometer Z in m/s/s (Field 3)
+    pub accelerometer_z: f32,
+    /// Gyroscope X in rad/s (Field 4)
+    pub gyroscope_x: f32,
+    /// Gyroscope Y in rad/s (Field 5)
+    pub gyroscope_y: f32,
+    /// Gyroscope Z in rad/s (Field 6)
+    pub gyroscope_z: f32,
+    /// Reserved (Field 7)
+    pub reserved1: f32,
+    /// Reserved (Field 8)
+    pub reserved2: f32,
+    /// Reserved (Field 9)
+    pub reserved3: f32,
+    /// IMU Temperature in deg C (Field 10)
+    pub imu_temperature: f32,
+    /// Pressure in Pascals (Field 11)
+    pub pressure: f32,
+    /// Pressure Temperature in deg C (Field 12)
+    pub pressure_temperature: f32,
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
