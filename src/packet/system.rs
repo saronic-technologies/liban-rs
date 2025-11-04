@@ -170,17 +170,6 @@ mod tests {
     }
 }
 
-/// External Time packet structure (Packet ID 52, Length 8) - Write only
-/// Used to send external time to the device when GNSS is unavailable
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
-#[brw(little)]
-pub struct ExternalTimePacket {
-    /// Unix time in seconds since epoch (Field 1)
-    pub unix_time_seconds: u32,
-    /// Microseconds component (Field 2)
-    pub microseconds: u32,
-}
-
 #[cfg(test)]
 #[path = "tests/system.rs"]
 mod system_length_tests;
