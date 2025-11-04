@@ -45,9 +45,9 @@ pub trait Packet {
 
 // Import packet types from their respective modules
 use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
-            RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket, ExternalTimePacket};
+            RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket};
 use state::{SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket,
-            RawSensorsPacket, SatellitesPacket, HeavePacket, SensorTemperaturePacket};
+            RawSensorsPacket, SatellitesPacket, ExternalTimePacket, HeavePacket, SensorTemperaturePacket};
 use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignmentPacket,
             FilterOptionsPacket, OdometerConfigurationPacket, SetZeroOrientationAlignmentPacket,
             ReferencePointOffsetsPacket, IpDataportsConfigurationPacket};
@@ -157,7 +157,7 @@ macro_rules! define_packets {
 }
 
 define_packets!(
-    // System Packets (0-14, 52)
+    // System Packets (0-14)
     Acknowledge => 0, Some(4),
     Request => 1, Some(1),
     BootMode => 2, Some(1),
@@ -165,15 +165,15 @@ define_packets!(
     RestoreFactorySettings => 4, Some(4),
     Reset => 5, Some(4),
     IpConfiguration => 11, Some(30),
-    ExternalTime => 52, Some(8),
 
-    // State Packets (20-30, 58, 85)
+    // State Packets (20-30, 52, 58, 85)
     SystemState => 20, Some(100),
     UnixTime => 21, Some(8),
     Status => 23, Some(4),
     EulerOrientationStdDev => 26, Some(12),
     RawSensors => 28, Some(48),
     Satellites => 30, Some(13),
+    ExternalTime => 52, Some(8),
     Heave => 58, Some(16),
     SensorTemperature => 85, Some(32),
 
