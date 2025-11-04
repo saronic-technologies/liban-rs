@@ -22,6 +22,7 @@ The library implements the following packets:
 - **EulerOrientationStdDevPacket** (ID 26) - Euler orientation standard deviations (roll, pitch, heading) in radians
 - **RawSensorsPacket** (ID 28) - Raw accelerometer, gyroscope, IMU temperature, pressure sensor data
 - **SatellitesPacket** (ID 30) - HDOP, VDOP, and satellite counts per constellation (GPS, GLONASS, Beidou, Galileo, SBAS)
+- **ExternalTimePacket** (ID 52) - Send external time to device (unix seconds + microseconds) for clock sync when GNSS unavailable
 - **HeavePacket** (ID 58) - Heave measurements at 4 reference points in meters
 - **SensorTemperaturePacket** (ID 85) - Temperature readings from accelerometer, gyroscope, and pressure sensors
 

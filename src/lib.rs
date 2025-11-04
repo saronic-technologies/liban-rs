@@ -15,6 +15,7 @@ pub use packet::system::{
     AcknowledgePacket,
     BootModePacket,
     DeviceInformationPacket,
+    ExternalTimePacket,
     IpConfigurationPacket,
     RequestPacket,
     ResetPacket,
