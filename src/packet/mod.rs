@@ -45,7 +45,7 @@ pub trait Packet {
 
 // Import packet types from their respective modules
 use system::{AcknowledgePacket, RequestPacket, BootModePacket, DeviceInformationPacket,
-            RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket};
+            RestoreFactorySettingsPacket, ResetPacket, IpConfigurationPacket, ExternalTimePacket};
 use state::{SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket,
             RawSensorsPacket, SatellitesPacket, HeavePacket, SensorTemperaturePacket};
 use config::{PacketTimerPeriodPacket, PacketsPeriodPacket, InstallationAlignmentPacket,
@@ -157,7 +157,7 @@ macro_rules! define_packets {
 }
 
 define_packets!(
-    // System Packets (0-14)
+    // System Packets (0-14, 52)
     Acknowledge => 0, Some(4),
     Request => 1, Some(1),
     BootMode => 2, Some(1),
@@ -165,6 +165,7 @@ define_packets!(
     RestoreFactorySettings => 4, Some(4),
     Reset => 5, Some(4),
     IpConfiguration => 11, Some(30),
+    ExternalTime => 52, Some(8),
 
     // State Packets (20-30, 58, 85)
     SystemState => 20, Some(100),
