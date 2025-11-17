@@ -1,5 +1,6 @@
 
 use binrw::{BinRead, BinWrite};
+use serde::{Serialize, Deserialize};
 use crate::{Result, error::AnError};
 pub mod system;
 pub mod state;
@@ -7,7 +8,7 @@ pub mod config;
 pub mod flags;
 
 /// ANPP packet identifier structure
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketId {
     pub id: u8,
@@ -31,7 +32,7 @@ impl PacketId {
 }
 
 /// ANPP packet header structure
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct AnppHeader {
     pub header_lrc: u8,

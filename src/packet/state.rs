@@ -1,10 +1,11 @@
 use binrw::{BinRead, BinWrite};
+use serde::{Serialize, Deserialize};
 use super::flags::{SystemStatusFlags, FilterStatusFlags};
 
 /// State Packets (20-23)
 
 /// System state packet structure (Packet ID 20, Length 100) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct SystemStatePacket {
     /// System Status (Field 1)
@@ -57,7 +58,7 @@ pub struct SystemStatePacket {
 
 
 /// Unix time packet structure (Packet ID 21, Length 8) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct UnixTimePacket {
     pub unix_time_seconds: u32,
@@ -66,7 +67,7 @@ pub struct UnixTimePacket {
 
 
 /// Status packet structure (Packet ID 23, Length 4) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct StatusPacket {
     pub system_status: SystemStatusFlags,
@@ -75,7 +76,7 @@ pub struct StatusPacket {
 
 
 /// Euler Orientation Standard Deviation packet structure (Packet ID 26, Length 12) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct EulerOrientationStdDevPacket {
     /// Roll standard deviation in radians (Field 1)
@@ -89,7 +90,7 @@ pub struct EulerOrientationStdDevPacket {
 
 /// External Time packet structure (Packet ID 52, Length 8) - Write only
 /// Used to send external time to the device when GNSS is unavailable
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct ExternalTimePacket {
     /// Unix time in seconds since epoch (Field 1)
@@ -100,7 +101,7 @@ pub struct ExternalTimePacket {
 
 
 /// Satellites packet structure (Packet ID 30, Length 13) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct SatellitesPacket {
     /// Horizontal Dilution of Precision (Field 1)
@@ -121,7 +122,7 @@ pub struct SatellitesPacket {
 
 
 /// Heave packet structure (Packet ID 58, Length 16) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct HeavePacket {
     /// Heave point 1 in meters (Field 1)
@@ -136,7 +137,7 @@ pub struct HeavePacket {
 
 
 /// Sensor temperature packet structure (Packet ID 85, Length 32) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct SensorTemperaturePacket {
     /// Accelerometer temperature - axis 0 in deg C (Field 1[0])
@@ -159,7 +160,7 @@ pub struct SensorTemperaturePacket {
 
 
 /// Raw sensors packet structure (Packet ID 28, Length 48) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct RawSensorsPacket {
     /// Accelerometer X in m/s/s (Field 1)

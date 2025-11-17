@@ -1,9 +1,10 @@
 use binrw::{BinRead, BinWrite};
+use serde::{Serialize, Deserialize};
 
 /// Configuration Packets (180-203)
 
 /// Packet timer period packet structure (Packet ID 180, Length 4) - Read/Write
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketTimerPeriodPacket {
     pub permanent: u8,
@@ -14,7 +15,7 @@ pub struct PacketTimerPeriodPacket {
 
 /// Packets period packet structure (Packet ID 181, Length: 2 + (5 x number of packet periods)) - Read/Write
 /// Format: Permanent (1) | Clear Existing (1) | [Packet ID (1) | Period (4)]...
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketsPeriodPacket {
     /// Permanent setting (Field 1)
@@ -42,7 +43,7 @@ pub struct PacketsPeriodPacket {
 
 
 /// Entry for packets period configuration
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketPeriodEntry {
     pub packet_id: u8,
@@ -50,7 +51,7 @@ pub struct PacketPeriodEntry {
 }
 
 /// Installation alignment packet structure (Packet ID 185, Length 73) - Read/Write
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct InstallationAlignmentPacket {
     pub permanent: u8,
@@ -62,7 +63,7 @@ pub struct InstallationAlignmentPacket {
 
 
 /// 3D offset vector for installation alignment
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct OffsetVector {
     pub x: f32,
@@ -71,7 +72,7 @@ pub struct OffsetVector {
 }
 
 /// Filter options packet structure (Packet ID 186, Length 17) - Read/Write
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct FilterOptionsPacket {
     pub permanent: u8,
@@ -88,7 +89,7 @@ pub struct FilterOptionsPacket {
 
 
 /// Vehicle type enumeration for filter options
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum VehicleType {
     Unlimited = 0,
@@ -109,7 +110,7 @@ pub enum VehicleType {
 }
 
 /// Odometer configuration packet structure (Packet ID 192, Length 8) - Read/Write
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct OdometerConfigurationPacket {
     pub permanent: u8,
@@ -120,7 +121,7 @@ pub struct OdometerConfigurationPacket {
 
 
 /// Set zero orientation alignment packet structure (Packet ID 193, Length 1) - Write only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct SetZeroOrientationAlignmentPacket {
     pub permanent: u8,
@@ -128,7 +129,7 @@ pub struct SetZeroOrientationAlignmentPacket {
 
 
 /// Reference point offsets packet structure (Packet ID 194, Length 13) - Read/Write
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct ReferencePointOffsetsPacket {
     pub permanent: u8,
@@ -138,7 +139,7 @@ pub struct ReferencePointOffsetsPacket {
 
 /// IP dataports configuration packet structure (Packet ID 202, Length 30) - Read/Write
 /// Contains exactly 4 dataport entries as per ANPP specification
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct IpDataportsConfigurationPacket {
     pub reserved: u16,
@@ -148,7 +149,7 @@ pub struct IpDataportsConfigurationPacket {
 
 /// IP dataport entry for IP dataports configuration
 /// Fields: ip_address(u32), port(u16), mode(u8) = 7 bytes per entry
-#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct IpDataportEntry {
     pub ip_address: u32,
@@ -157,7 +158,7 @@ pub struct IpDataportEntry {
 }
 
 /// IP dataport mode enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum IpDataportMode {
     Disabled = 0,
