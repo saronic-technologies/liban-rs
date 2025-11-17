@@ -96,25 +96,12 @@ macro_rules! define_packets {
             }
 
             impl AnppPacket {
-                /// Get the packet kind for this packet
-                pub fn kind(&self) -> PacketKind {
-                    match self {
-                        $( AnppPacket::$variant(_) => PacketKind::$variant, )+
-                        AnppPacket::Unsupported(_) => PacketKind::Unsupported,
-                    }
-                }
-
                 /// Get the packet ID for this packet
-                pub fn packet_id(&self) -> u8 {
+                pub(crate) fn packet_id(&self) -> u8 {
                     match self {
                         $( AnppPacket::$variant(_) => $code, )+
                         AnppPacket::Unsupported(_) => 0xFF,
                     }
-                }
-
-                /// Get the expected byte length for this packet
-                pub fn byte_length(&self) -> Option<usize> {
-                    self.kind().byte_length()
                 }
 
                 /// Parse a packet from raw bytes

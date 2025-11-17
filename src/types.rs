@@ -1,4 +1,4 @@
-//! Clean Rust API types without wire format concerns
+//! Public API types without wire format concerns
 //!
 //! This module provides ergonomic Rust types that are free from:
 //! - Packet IDs (implicit in the type)
@@ -10,16 +10,26 @@
 use serde::{Serialize, Deserialize};
 use crate::packet::AnppPacket;
 
-pub mod system_types;
-pub mod state_types;
-pub mod config_types;
+// Re-export public types from packet modules
+pub use crate::packet::system::{
+    Acknowledge, AcknowledgeResult, Request, BootMode, DeviceInformation,
+    RestoreFactorySettings, Reset, IpConfiguration,
+};
 
-// Re-export for convenience
-pub use system_types::*;
-pub use state_types::*;
-pub use config_types::*;
+pub use crate::packet::state::{
+    SystemStatus, FilterStatus, GnssFixType, SystemState, UnixTime, Status,
+    EulerOrientationStdDev, ExternalTime, Satellites, Heave, SensorTemperature,
+    RawSensors,
+};
 
-/// Clean packet enum for the public API
+pub use crate::packet::config::{
+    PacketPeriod, PacketTimerPeriod, PacketsPeriod, OffsetVector,
+    InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
+    SetZeroOrientationAlignment, ReferencePointOffsets, IpDataportMode,
+    IpDataport, IpDataportsConfiguration,
+};
+
+/// Packet enum for the public API
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Packet {
     // System packets

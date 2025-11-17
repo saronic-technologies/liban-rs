@@ -48,36 +48,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Parser returns clean types directly - no conversion needed!
             match packet {
-                liban::Packet::SystemState(clean) => {
+                liban::Packet::SystemState(p) => {
                     println!("SystemState");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("POSITION:");
-                    println!("   Latitude:  {:.6}°", clean.latitude.to_degrees());
-                    println!("   Longitude: {:.6}°", clean.longitude.to_degrees());
-                    println!("   Height:    {:.2} m", clean.height);
+                    println!("   Latitude:  {:.6}°", p.latitude.to_degrees());
+                    println!("   Longitude: {:.6}°", p.longitude.to_degrees());
+                    println!("   Height:    {:.2} m", p.height);
 
                     println!("\nVELOCITY:");
-                    println!("   North: {:.2} m/s", clean.velocity_north);
-                    println!("   East:  {:.2} m/s", clean.velocity_east);
-                    println!("   Down:  {:.2} m/s", clean.velocity_down);
+                    println!("   North: {:.2} m/s", p.velocity_north);
+                    println!("   East:  {:.2} m/s", p.velocity_east);
+                    println!("   Down:  {:.2} m/s", p.velocity_down);
 
                     println!("\nORIENTATION:");
-                    println!("   Roll:    {:.2}°", clean.roll.to_degrees());
-                    println!("   Pitch:   {:.2}°", clean.pitch.to_degrees());
-                    println!("   Heading: {:.2}°", clean.heading.to_degrees());
+                    println!("   Roll:    {:.2}°", p.roll.to_degrees());
+                    println!("   Pitch:   {:.2}°", p.pitch.to_degrees());
+                    println!("   Heading: {:.2}°", p.heading.to_degrees());
 
                     println!("\nGNSS STATUS:");
-                    println!("   Fix Type: {:?}", clean.filter_status.gnss_fix_type);
-                    println!("   Navigation Initialized: {}", clean.filter_status.navigation_filter_initialised);
-                    println!("   Heading Initialized: {}", clean.filter_status.heading_initialised);
+                    println!("   Fix Type: {:?}", p.filter_status.gnss_fix_type);
+                    println!("   Navigation Initialized: {}", p.filter_status.navigation_filter_initialised);
+                    println!("   Heading Initialized: {}", p.filter_status.heading_initialised);
 
                     // Clean boolean fields instead of bitflags
                     let mut warnings = Vec::new();
-                    if clean.system_status.system_failure { warnings.push("System Failure"); }
-                    if clean.system_status.gnss_failure { warnings.push("GNSS Failure"); }
-                    if clean.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
-                    if clean.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
-                    if clean.system_status.gnss_antenna_disconnected { warnings.push("GNSS Antenna Disconnected"); }
+                    if p.system_status.system_failure { warnings.push("System Failure"); }
+                    if p.system_status.gnss_failure { warnings.push("GNSS Failure"); }
+                    if p.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
+                    if p.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
+                    if p.system_status.gnss_antenna_disconnected { warnings.push("GNSS Antenna Disconnected"); }
 
                     if !warnings.is_empty() {
                         println!("\nWARNINGS:");
@@ -87,24 +87,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
 
-                liban::Packet::UnixTime(clean) => {
+                liban::Packet::UnixTime(p) => {
                     println!("UnixTime");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    println!("TIME: {}s + {}μs", clean.unix_time_seconds, clean.microseconds);
+                    println!("TIME: {}s + {}μs", p.unix_time_seconds, p.microseconds);
                 }
 
-                liban::Packet::Status(clean) => {
+                liban::Packet::Status(p) => {
                     println!("Status");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("STATUS:");
-                    println!("   GNSS Fix: {:?}", clean.filter_status.gnss_fix_type);
+                    println!("   GNSS Fix: {:?}", p.filter_status.gnss_fix_type);
 
                     // Individual boolean fields
                     let mut warnings = Vec::new();
-                    if clean.system_status.system_failure { warnings.push("System Failure"); }
-                    if clean.system_status.gnss_failure { warnings.push("GNSS Failure"); }
-                    if clean.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
-                    if clean.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
+                    if p.system_status.system_failure { warnings.push("System Failure"); }
+                    if p.system_status.gnss_failure { warnings.push("GNSS Failure"); }
+                    if p.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
+                    if p.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
 
                     if warnings.is_empty() {
                         println!("   All systems nominal");
@@ -113,89 +113,87 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
 
-                liban::Packet::Satellites(clean) => {
+                liban::Packet::Satellites(p) => {
                     println!("Satellites");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("SATELLITES:");
-                    println!("   GPS:     {}", clean.gps_satellites);
-                    println!("   GLONASS: {}", clean.glonass_satellites);
-                    println!("   BeiDou:  {}", clean.beidou_satellites);
-                    println!("   Galileo: {}", clean.galileo_satellites);
-                    println!("   SBAS:    {}", clean.sbas_satellites);
+                    println!("   GPS:     {}", p.gps_satellites);
+                    println!("   GLONASS: {}", p.glonass_satellites);
+                    println!("   BeiDou:  {}", p.beidou_satellites);
+                    println!("   Galileo: {}", p.galileo_satellites);
+                    println!("   SBAS:    {}", p.sbas_satellites);
                     println!("   Total:   {}",
-                             clean.gps_satellites + clean.glonass_satellites +
-                             clean.beidou_satellites + clean.galileo_satellites + clean.sbas_satellites);
-                    println!("\n   HDOP: {:.2}", clean.hdop);
-                    println!("   VDOP: {:.2}", clean.vdop);
+                             p.gps_satellites + p.glonass_satellites +
+                             p.beidou_satellites + p.galileo_satellites + p.sbas_satellites);
+                    println!("\n   HDOP: {:.2}", p.hdop);
+                    println!("   VDOP: {:.2}", p.vdop);
                 }
 
-                liban::Packet::RawSensors(clean) => {
+                liban::Packet::RawSensors(p) => {
                     println!("RawSensors");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("RAW SENSORS:");
                     println!("   Accelerometer: [{:.3}, {:.3}, {:.3}] m/s²",
-                             clean.accelerometer_x, clean.accelerometer_y, clean.accelerometer_z);
+                             p.accelerometer_x, p.accelerometer_y, p.accelerometer_z);
                     println!("   Gyroscope:     [{:.3}, {:.3}, {:.3}] rad/s",
-                             clean.gyroscope_x, clean.gyroscope_y, clean.gyroscope_z);
-                    println!("   IMU Temp:      {:.1}°C", clean.imu_temperature);
-                    println!("   Pressure:      {:.0} Pa ({:.2} hPa)", clean.pressure, clean.pressure / 100.0);
-                    println!("   Pressure Temp: {:.1}°C", clean.pressure_temperature);
-                    // Note: No reserved fields exposed in clean API!
+                             p.gyroscope_x, p.gyroscope_y, p.gyroscope_z);
+                    println!("   IMU Temp:      {:.1}°C", p.imu_temperature);
+                    println!("   Pressure:      {:.0} Pa ({:.2} hPa)", p.pressure, p.pressure / 100.0);
+                    println!("   Pressure Temp: {:.1}°C", p.pressure_temperature);
                 }
 
-                liban::Packet::SensorTemperature(clean) => {
+                liban::Packet::SensorTemperature(p) => {
                     println!("SensorTemperature");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("SENSOR TEMPERATURES:");
                     println!("   Accelerometer: [{:.1}, {:.1}, {:.1}]°C",
-                             clean.accelerometer_temp_0, clean.accelerometer_temp_1, clean.accelerometer_temp_2);
+                             p.accelerometer_temp_0, p.accelerometer_temp_1, p.accelerometer_temp_2);
                     println!("   Gyroscope:     [{:.1}, {:.1}, {:.1}]°C",
-                             clean.gyroscope_temp_0, clean.gyroscope_temp_1, clean.gyroscope_temp_2);
-                    println!("   Pressure:      {:.1}°C", clean.pressure_sensor_temp);
-                    // Note: No reserved field in clean API!
+                             p.gyroscope_temp_0, p.gyroscope_temp_1, p.gyroscope_temp_2);
+                    println!("   Pressure:      {:.1}°C", p.pressure_sensor_temp);
                 }
 
-                liban::Packet::DeviceInformation(clean) => {
+                liban::Packet::DeviceInformation(p) => {
                     println!("DeviceInformation");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("DEVICE INFORMATION:");
-                    println!("   Software Version: 0x{:08X}", clean.software_version);
-                    println!("   Device ID:        {}", clean.device_id);
-                    println!("   Hardware Rev:     {}", clean.hardware_revision);
+                    println!("   Software Version: 0x{:08X}", p.software_version);
+                    println!("   Device ID:        {}", p.device_id);
+                    println!("   Hardware Rev:     {}", p.hardware_revision);
                     println!("   Serial Number:    {:08X}-{:08X}-{:08X}",
-                             clean.serial_number_1, clean.serial_number_2, clean.serial_number_3);
+                             p.serial_number_1, p.serial_number_2, p.serial_number_3);
                 }
 
-                liban::Packet::Acknowledge(clean) => {
+                liban::Packet::Acknowledge(p) => {
                     println!("Acknowledge");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("ACKNOWLEDGE:");
-                    println!("   Packet: {:?}", clean.acknowledged_packet);
-                    println!("   Result: {:?}", clean.result);
+                    println!("   Packet: {:?}", p.acknowledged_packet);
+                    println!("   Result: {:?}", p.result);
                 }
 
-                liban::Packet::EulerOrientationStdDev(clean) => {
+                liban::Packet::EulerOrientationStdDev(p) => {
                     println!("EulerOrientationStdDev");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("ORIENTATION UNCERTAINTY:");
-                    println!("   Roll:    {:.4}°", clean.roll_std_dev.to_degrees());
-                    println!("   Pitch:   {:.4}°", clean.pitch_std_dev.to_degrees());
-                    println!("   Heading: {:.4}°", clean.heading_std_dev.to_degrees());
+                    println!("   Roll:    {:.4}°", p.roll_std_dev.to_degrees());
+                    println!("   Pitch:   {:.4}°", p.pitch_std_dev.to_degrees());
+                    println!("   Heading: {:.4}°", p.heading_std_dev.to_degrees());
                 }
 
-                liban::Packet::Heave(clean) => {
+                liban::Packet::Heave(p) => {
                     println!("Heave");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("HEAVE:");
                     println!("   Points: [{:.2}, {:.2}, {:.2}, {:.2}] m",
-                             clean.heave_point_1, clean.heave_point_2,
-                             clean.heave_point_3, clean.heave_point_4);
+                             p.heave_point_1, p.heave_point_2,
+                             p.heave_point_3, p.heave_point_4);
                 }
 
-                liban::Packet::ExternalTime(clean) => {
+                liban::Packet::ExternalTime(p) => {
                     println!("ExternalTime");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                    println!("EXTERNAL TIME: {}s + {}μs", clean.unix_time_seconds, clean.microseconds);
+                    println!("EXTERNAL TIME: {}s + {}μs", p.unix_time_seconds, p.microseconds);
                 }
 
                 liban::Packet::Unsupported => {
