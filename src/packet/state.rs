@@ -7,7 +7,7 @@ use super::flags::{SystemStatusFlags, FilterStatusFlags};
 /// System state packet structure (Packet ID 20, Length 100) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct SystemStatePacket {
+pub(crate) struct SystemStatePacket {
     /// System Status (Field 1)
     pub system_status: SystemStatusFlags,
     /// Filter Status (Field 2)
@@ -60,7 +60,7 @@ pub struct SystemStatePacket {
 /// Unix time packet structure (Packet ID 21, Length 8) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct UnixTimePacket {
+pub(crate) struct UnixTimePacket {
     pub unix_time_seconds: u32,
     pub microseconds: u32,
 }
@@ -69,7 +69,7 @@ pub struct UnixTimePacket {
 /// Status packet structure (Packet ID 23, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct StatusPacket {
+pub(crate) struct StatusPacket {
     pub system_status: SystemStatusFlags,
     pub filter_status: FilterStatusFlags,
 }
@@ -78,7 +78,7 @@ pub struct StatusPacket {
 /// Euler Orientation Standard Deviation packet structure (Packet ID 26, Length 12) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct EulerOrientationStdDevPacket {
+pub(crate) struct EulerOrientationStdDevPacket {
     /// Roll standard deviation in radians (Field 1)
     pub roll_std_dev: f32,
     /// Pitch standard deviation in radians (Field 2)
@@ -92,7 +92,7 @@ pub struct EulerOrientationStdDevPacket {
 /// Used to send external time to the device when GNSS is unavailable
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct ExternalTimePacket {
+pub(crate) struct ExternalTimePacket {
     /// Unix time in seconds since epoch (Field 1)
     pub unix_time_seconds: u32,
     /// Microseconds component (Field 2)
@@ -103,7 +103,7 @@ pub struct ExternalTimePacket {
 /// Satellites packet structure (Packet ID 30, Length 13) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct SatellitesPacket {
+pub(crate) struct SatellitesPacket {
     /// Horizontal Dilution of Precision (Field 1)
     pub hdop: f32,
     /// Vertical Dilution of Precision (Field 2)
@@ -124,7 +124,7 @@ pub struct SatellitesPacket {
 /// Heave packet structure (Packet ID 58, Length 16) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct HeavePacket {
+pub(crate) struct HeavePacket {
     /// Heave point 1 in meters (Field 1)
     pub heave_point_1: f32,
     /// Heave point 2 in meters (Field 2)
@@ -139,7 +139,7 @@ pub struct HeavePacket {
 /// Sensor temperature packet structure (Packet ID 85, Length 32) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct SensorTemperaturePacket {
+pub(crate) struct SensorTemperaturePacket {
     /// Accelerometer temperature - axis 0 in deg C (Field 1[0])
     pub accelerometer_temp_0: f32,
     /// Accelerometer temperature - axis 1 in deg C (Field 1[1])
@@ -162,7 +162,7 @@ pub struct SensorTemperaturePacket {
 /// Raw sensors packet structure (Packet ID 28, Length 48) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct RawSensorsPacket {
+pub(crate) struct RawSensorsPacket {
     /// Accelerometer X in m/s/s (Field 1)
     pub accelerometer_x: f32,
     /// Accelerometer Y in m/s/s (Field 2)

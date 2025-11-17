@@ -63,7 +63,7 @@ macro_rules! define_packets {
             )+
 
             /// Core enum that represents the packet kind
-            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
             pub enum PacketKind {
                 $( $variant, )+
                 Unsupported,
@@ -90,7 +90,7 @@ macro_rules! define_packets {
 
             /// Detailed enum that holds the associated payload
             #[derive(Debug, Clone)]
-            pub enum AnppPacket {
+            pub(crate) enum AnppPacket {
                 $( $variant([<$variant Packet>]), )+
                 Unsupported(Vec<u8>),
             }

@@ -1,5 +1,5 @@
-use crate::AnppPacket;
 use crate::parser::AnppParser;
+use crate::types::Packet;
 
 use std::io::Read;
 
@@ -47,7 +47,7 @@ impl<R: Read> AnppReader<R> {
 }
 
 impl<R: Read> Iterator for AnppReader<R> {
-    type Item = Result<AnppPacket, std::io::Error>;
+    type Item = Result<Packet, std::io::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut buffer = [0u8; BUFFER_SIZE];

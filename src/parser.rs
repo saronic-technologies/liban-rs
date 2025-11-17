@@ -1,8 +1,9 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use crate::{AnppPacket, PacketKind};
+use crate::packet::{AnppPacket, PacketKind};
 use crate::protocol::AnppProtocol;
+use crate::types::Packet;
 
 use tracing::debug;
 
@@ -131,7 +132,7 @@ impl AnppParser {
     /// Consume bytes and attempt to parse a packet. If we can't
     /// find a complete packet we return None. If we get a packet it doesn't
     /// guarantee the whole internal buffer is drained.
-    pub fn consume(&mut self, input: &[u8]) -> Option<AnppPacket> {
+    pub fn consume(&mut self, input: &[u8]) -> Option<Packet> {
         // Append new data to buffer
         self.buf.extend(input);
 
@@ -153,7 +154,7 @@ impl AnppParser {
                         self.buf_start = 0;
                     }
 
-                    return Some(packet);
+                    return Some(packet.into());
                 },
                 Err(ParseError::IncompleteData) => {
                     return None;

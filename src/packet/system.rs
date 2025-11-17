@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 /// Acknowledge packet structure (Packet ID 0, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct AcknowledgePacket {
+pub(crate) struct AcknowledgePacket {
     pub packet_id: u8,
     pub packet_crc: u16,
     pub result: u8,
@@ -16,7 +16,7 @@ pub struct AcknowledgePacket {
 /// Request packet structure (Packet ID 1, Variable length) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct RequestPacket {
+pub(crate) struct RequestPacket {
     pub packet_id: u8,
 }
 
@@ -24,7 +24,7 @@ pub struct RequestPacket {
 /// Boot mode packet structure (Packet ID 2, Length 1) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct BootModePacket {
+pub(crate) struct BootModePacket {
     pub boot_mode: u8,
 }
 
@@ -32,7 +32,7 @@ pub struct BootModePacket {
 /// Device information packet structure (Packet ID 3, Length 24) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct DeviceInformationPacket {
+pub(crate) struct DeviceInformationPacket {
     pub software_version: u32,
     pub device_id: u32,
     pub hardware_revision: u32,
@@ -48,7 +48,7 @@ pub struct DeviceInformationPacket {
 /// Note: A Factory Reset will re-enable the DHCP Client and lose any static IP address settings.
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct RestoreFactorySettingsPacket {
+pub(crate) struct RestoreFactorySettingsPacket {
     pub verification: u32, // Verification code (must be 0x85429E1C)
 }
 
@@ -71,7 +71,7 @@ impl Default for RestoreFactorySettingsPacket {
 /// Reset packet structure (Packet ID 5, Length 4) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct ResetPacket {
+pub(crate) struct ResetPacket {
     pub verification: u32, // Verification code (must be 0x21057A7E)
 }
 
@@ -94,7 +94,7 @@ impl Default for ResetPacket {
 /// IP configuration packet structure (Packet ID 11, Length 30) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-pub struct IpConfigurationPacket {
+pub(crate) struct IpConfigurationPacket {
     pub permanent: u8,
     pub dhcp_mode: u8,
     pub ip_address: u32,
