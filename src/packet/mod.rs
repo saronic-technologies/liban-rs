@@ -1,5 +1,6 @@
 
 use binrw::{BinRead, BinWrite};
+use serde::{Serialize, Deserialize};
 use crate::{Result, error::AnError};
 pub mod system;
 pub mod state;
@@ -7,7 +8,7 @@ pub mod config;
 pub mod flags;
 
 /// ANPP packet identifier structure
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketId {
     pub id: u8,
@@ -31,7 +32,7 @@ impl PacketId {
 }
 
 /// ANPP packet header structure
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct AnppHeader {
     pub header_lrc: u8,
@@ -62,7 +63,7 @@ macro_rules! define_packets {
             )+
 
             /// Core enum that represents the packet kind
-            #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
             pub enum PacketKind {
                 $( $variant, )+
                 Unsupported,
@@ -89,31 +90,18 @@ macro_rules! define_packets {
 
             /// Detailed enum that holds the associated payload
             #[derive(Debug, Clone)]
-            pub enum AnppPacket {
+            pub(crate) enum AnppPacket {
                 $( $variant([<$variant Packet>]), )+
                 Unsupported(Vec<u8>),
             }
 
             impl AnppPacket {
-                /// Get the packet kind for this packet
-                pub fn kind(&self) -> PacketKind {
-                    match self {
-                        $( AnppPacket::$variant(_) => PacketKind::$variant, )+
-                        AnppPacket::Unsupported(_) => PacketKind::Unsupported,
-                    }
-                }
-
                 /// Get the packet ID for this packet
-                pub fn packet_id(&self) -> u8 {
+                pub(crate) fn packet_id(&self) -> u8 {
                     match self {
                         $( AnppPacket::$variant(_) => $code, )+
                         AnppPacket::Unsupported(_) => 0xFF,
                     }
-                }
-
-                /// Get the expected byte length for this packet
-                pub fn byte_length(&self) -> Option<usize> {
-                    self.kind().byte_length()
                 }
 
                 /// Parse a packet from raw bytes

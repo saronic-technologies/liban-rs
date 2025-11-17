@@ -140,20 +140,22 @@ impl AnppProtocol {
     }
 
     /// Create an ANPP packet from AnppPacket enum
-    pub fn get_bytes_from_packet(packet: AnppPacket) -> Result<Vec<u8>> {
+    pub(crate) fn get_bytes_from_packet(packet: AnppPacket) -> Result<Vec<u8>> {
         let packet_id = PacketId::new(packet.packet_id());
         let data = packet.to_bytes()?;
         Self::get_packet_bytes(packet_id, &data)
     }
 
     /// Parse raw bytes into AnppPacket enum
-    pub fn parse_bytes(packet: &[u8]) -> Result<AnppPacket> {
+    #[allow(dead_code)]
+    pub(crate) fn parse_bytes(packet: &[u8]) -> Result<AnppPacket> {
         let (header, data) = Self::get_header_from_bytes(packet)?;
         AnppPacket::from_bytes(header.packet_id.as_u8(), &data)
     }
 
     /// Create a request packet for the specified packet ID
-    pub fn create_request_packet(requested_packet_id: PacketId) -> RequestPacket {
+    #[allow(dead_code)]
+    pub(crate) fn create_request_packet(requested_packet_id: PacketId) -> RequestPacket {
         RequestPacket {
             packet_id: requested_packet_id.as_u8()
         }
