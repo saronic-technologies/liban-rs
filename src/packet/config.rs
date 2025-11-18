@@ -127,12 +127,17 @@ pub(crate) struct SetZeroOrientationAlignmentPacket {
 }
 
 
-/// Reference point offsets packet structure (Packet ID 194, Length 13) - Read/Write
+/// Reference point offsets packet structure (Packet ID 194, Length 49) - Read/Write
+/// Heave point 1 is the primary reference point offset
+/// Heave point 2 is used for COG Lever Arm offset
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub(crate) struct ReferencePointOffsetsPacket {
     pub permanent: u8,
-    pub offset: OffsetVector,
+    pub heave_point_1: OffsetVector,
+    pub heave_point_2: OffsetVector,
+    pub heave_point_3: OffsetVector,
+    pub heave_point_4: OffsetVector,
 }
 
 
@@ -432,18 +437,26 @@ impl From<SetZeroOrientationAlignment> for SetZeroOrientationAlignmentPacket {
     }
 }
 
-/// Reference point offsets - clean API
+/// Reference point offsets
+/// Heave point 1 is the primary reference point offset
+/// Heave point 2 is used for COG Lever Arm offset
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ReferencePointOffsets {
     pub permanent: bool,
-    pub offset: OffsetVector,
+    pub heave_point_1: OffsetVector,
+    pub heave_point_2: OffsetVector,
+    pub heave_point_3: OffsetVector,
+    pub heave_point_4: OffsetVector,
 }
 
 impl From<ReferencePointOffsetsPacket> for ReferencePointOffsets {
     fn from(p: ReferencePointOffsetsPacket) -> Self {
         Self {
             permanent: p.permanent != 0,
-            offset: p.offset,
+            heave_point_1: p.heave_point_1,
+            heave_point_2: p.heave_point_2,
+            heave_point_3: p.heave_point_3,
+            heave_point_4: p.heave_point_4,
         }
     }
 }
@@ -452,7 +465,10 @@ impl From<ReferencePointOffsets> for ReferencePointOffsetsPacket {
     fn from(r: ReferencePointOffsets) -> Self {
         Self {
             permanent: r.permanent as u8,
-            offset: r.offset,
+            heave_point_1: r.heave_point_1,
+            heave_point_2: r.heave_point_2,
+            heave_point_3: r.heave_point_3,
+            heave_point_4: r.heave_point_4,
         }
     }
 }

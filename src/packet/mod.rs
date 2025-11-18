@@ -77,6 +77,14 @@ macro_rules! define_packets {
                         PacketKind::Unsupported => None,
                     }
                 }
+
+                /// Get the packet ID for this packet kind
+                pub fn packet_id(&self) -> u8 {
+                    match self {
+                        $( PacketKind::$variant => $code, )+
+                        PacketKind::Unsupported => 0xFF,
+                    }
+                }
             }
 
             impl From<u8> for PacketKind {
@@ -172,7 +180,7 @@ define_packets!(
     FilterOptions => 186, Some(17),
     OdometerConfiguration => 192, Some(8),
     SetZeroOrientationAlignment => 193, Some(1),
-    ReferencePointOffsets => 194, Some(13),
+    ReferencePointOffsets => 194, Some(49),
     IpDataportsConfiguration => 202, Some(30),
 );
 

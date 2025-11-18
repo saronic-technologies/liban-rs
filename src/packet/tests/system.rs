@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use crate::{
-        AcknowledgePacket, RequestPacket, BootModePacket, 
+    use crate::packet::system::{
+        AcknowledgePacket, RequestPacket, BootModePacket,
         DeviceInformationPacket, RestoreFactorySettingsPacket,
         ResetPacket, IpConfigurationPacket
     };

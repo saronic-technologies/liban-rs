@@ -239,7 +239,7 @@ impl From<RequestPacket> for Request {
 impl From<Request> for RequestPacket {
     fn from(r: Request) -> Self {
         Self {
-            packet_id: r.requested_packet as u8,
+            packet_id: r.requested_packet.packet_id(),
         }
     }
 }

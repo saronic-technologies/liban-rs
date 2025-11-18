@@ -185,10 +185,10 @@ mod tests {
         let packet_id = PacketId::new(20);
 
         // Create a packet
-        let packet = AnppProtocol::create_packet(packet_id, &test_data).unwrap();
+        let packet = AnppProtocol::get_packet_bytes(packet_id, &test_data).unwrap();
 
         // Parse it back
-        let (header, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
+        let (header, parsed_data) = AnppProtocol::get_header_from_bytes(&packet).unwrap();
 
         assert_eq!(header.packet_id.as_u8(), 20);
         assert_eq!(header.length, test_data.len() as u8);
@@ -198,12 +198,16 @@ mod tests {
     #[test]
     fn test_request_packet_creation() {
         let requested_id = PacketId::new(3);
-        let request_packet = AnppProtocol::create_request_packet(requested_id).unwrap();
+        let request_packet = AnppProtocol::create_request_packet(requested_id);
 
-        // Should be a request packet (ID 1) containing the requested packet ID
-        let (header, data) = AnppProtocol::parse_packet(&request_packet).unwrap();
-        assert_eq!(header.packet_id.as_u8(), 1); // Request packet ID
-        assert_eq!(data, vec![3]); // Requested packet ID
+        // Serialize to bytes
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        request_packet.write_le(&mut cursor).unwrap();
+        let data = cursor.into_inner();
+
+        // Should be a request for packet ID 3
+        assert_eq!(request_packet.packet_id, 3);
+        assert_eq!(data, vec![3]); // Just the requested packet ID
     }
 
     #[test]
@@ -231,10 +235,10 @@ mod tests {
         let packet_id = PacketId::new(20);
 
         // Create a packet
-        let packet = AnppProtocol::create_packet(packet_id, &test_data).unwrap();
+        let packet = AnppProtocol::get_packet_bytes(packet_id, &test_data).unwrap();
 
         // Parse and validate
-        let (header, parsed_data) = AnppProtocol::parse_packet(&packet).unwrap();
+        let (header, parsed_data) = AnppProtocol::get_header_from_bytes(&packet).unwrap();
         AnppProtocol::validate_header(&header, &parsed_data).unwrap();
 
         assert_eq!(header.packet_id.as_u8(), 20);

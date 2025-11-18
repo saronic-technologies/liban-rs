@@ -195,7 +195,7 @@ impl Default for AnppParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RequestPacket;
+    use crate::packet::system::RequestPacket;
     use binrw::BinWrite;
 
     #[test]
