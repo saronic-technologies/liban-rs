@@ -99,7 +99,7 @@ impl<R: Read> Iterator for AnppReader<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RequestPacket;
+    use crate::packet::system::RequestPacket;
     use std::io::{Read, Cursor};
 
     #[test]

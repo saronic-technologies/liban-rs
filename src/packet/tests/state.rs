@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::{
+    use crate::packet::state::{
         SystemStatePacket, UnixTimePacket, StatusPacket, EulerOrientationStdDevPacket,
-        SystemStatusFlags, FilterStatusFlags
     };
+    use crate::packet::flags::{SystemStatusFlags, FilterStatusFlags};
     use binrw::{BinRead, BinWrite};
 
     #[test]

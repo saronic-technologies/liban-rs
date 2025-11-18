@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{
+    use crate::packet::config::{
         PacketTimerPeriodPacket, PacketsPeriodPacket, PacketPeriodEntry,
         InstallationAlignmentPacket, OffsetVector, FilterOptionsPacket, VehicleType,
         OdometerConfigurationPacket, SetZeroOrientationAlignmentPacket,
@@ -166,16 +166,19 @@ mod tests {
 
     #[test]
     fn test_reference_point_offsets_packet_length() {
-        // Packet ID 194, Length 13
+        // Packet ID 194, Length 49
         let packet = ReferencePointOffsetsPacket {
             permanent: 1,
-            offset: OffsetVector { x: 1.0, y: 2.0, z: 3.0 },
+            heave_point_1: OffsetVector { x: 1.0, y: 2.0, z: 3.0 },
+            heave_point_2: OffsetVector { x: 4.0, y: 5.0, z: 6.0 },
+            heave_point_3: OffsetVector { x: 7.0, y: 8.0, z: 9.0 },
+            heave_point_4: OffsetVector { x: 10.0, y: 11.0, z: 12.0 },
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
         packet.write_le(&mut cursor).expect("Failed to serialize");
         let bytes = cursor.into_inner();
-        assert_eq!(bytes.len(), 13, "ReferencePointOffsetsPacket should be 13 bytes");
+        assert_eq!(bytes.len(), 49, "ReferencePointOffsetsPacket should be 49 bytes");
     }
 
     #[test]
@@ -339,12 +342,15 @@ mod tests {
 
         let ref_point_packet = ReferencePointOffsetsPacket {
             permanent: 0,
-            offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
+            heave_point_1: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
+            heave_point_2: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
+            heave_point_3: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
+            heave_point_4: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
         };
         let mut cursor = std::io::Cursor::new(Vec::new());
         ref_point_packet.write_le(&mut cursor).unwrap();
         let ref_point_bytes = cursor.into_inner();
-        println!("ReferencePointOffsetsPacket (ID 194): Expected 13, Actual {}", ref_point_bytes.len());
+        println!("ReferencePointOffsetsPacket (ID 194): Expected 49, Actual {}", ref_point_bytes.len());
 
         let dataports_packet = IpDataportsConfigurationPacket {
             reserved: 0,
