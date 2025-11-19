@@ -216,7 +216,7 @@ impl From<PacketPeriodEntry> for PacketPeriod {
 impl From<PacketPeriod> for PacketPeriodEntry {
     fn from(p: PacketPeriod) -> Self {
         Self {
-            packet_id: p.packet_type as u8,
+            packet_id: p.packet_type.packet_id(),
             period: p.period.as_millis() as u32,
         }
     }
