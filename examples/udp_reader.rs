@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("#{packet_count} [{src}] Ack: {:?} -> {:?}",
                                 ack.acknowledged_packet, ack.result);
                     }
-                    Packet::Unsupported => {
+                    Packet::Unsupported(_) => {
                         println!("#{packet_count} [{src}] Unsupported");
                     }
                     other => {

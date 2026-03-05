@@ -1,5 +1,5 @@
 use crate::parser::AnppParser;
-use crate::types::Packet;
+use crate::packet::Packet;
 
 use std::io::Read;
 
@@ -99,7 +99,7 @@ impl<R: Read> Iterator for AnppReader<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::packet::system::RequestPacket;
+    use crate::packet::system::Request;
     use std::io::{Read, Cursor};
 
     #[test]
@@ -220,7 +220,7 @@ mod tests {
         use std::io::Cursor as WriteCursor;
 
         // Create some known ANPP packets
-        let request_packet = RequestPacket { packet_id: 20 }; // Request system state
+        let request_packet = Request { requested_packet: crate::packet::PacketKind::SystemState };
 
         // Serialize the packet payload
         let mut cursor = WriteCursor::new(Vec::new());

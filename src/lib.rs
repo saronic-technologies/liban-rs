@@ -8,11 +8,28 @@ pub mod packet;
 pub mod parser;
 pub mod protocol;
 pub mod reader;
-pub mod types;
 
 pub use error::{AnError, Result};
-pub use packet::PacketKind;
+pub use packet::{Packet, PacketKind, HasPacketId};
 pub use parser::{AnppParser, parse_datagram, DatagramError};
 
-// Re-export clean API types as the primary public interface
-pub use types::*;
+// Re-export all public types from packet modules
+pub use packet::system::{
+    Acknowledge, AcknowledgeResult, Request, BootMode, DeviceInformation,
+    RestoreFactorySettings, Reset, IpConfiguration,
+};
+
+pub use packet::state::{
+    SystemStatus, FilterStatus, GnssFixType, SystemState, UnixTime, Status,
+    PositionStdDev, VelocityStdDev,
+    EulerOrientationStdDev, ExternalTime, Satellites, Heave, SensorTemperature,
+    RawSensors, GnssPositionVelocityTime, GnssOrientation,
+    GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
+};
+
+pub use packet::config::{
+    PacketPeriod, PacketTimerPeriod, PacketsPeriod, OffsetVector,
+    InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
+    SetZeroOrientationAlignment, ReferencePointOffsets, IpDataportMode,
+    IpDataport, IpDataportsConfiguration,
+};
