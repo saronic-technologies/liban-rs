@@ -1,9 +1,8 @@
 extern crate alloc;
 use alloc::vec::Vec;
 
-use crate::packet::{AnppPacket, PacketKind};
+use crate::packet::{Packet, PacketKind};
 use crate::protocol::AnppProtocol;
-use crate::types::Packet;
 
 use tracing::debug;
 
@@ -26,7 +25,7 @@ type Result<T> = core::result::Result<(T, usize), ParseError>;
 // Constants for our parser
 const MIN_PACKET_SIZE: usize = 5; // 1 LRC + 1 ID + 1 length + 2 CRC16
 
-fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
+fn parse_packet(input: &[u8]) -> Result<Packet> {
     // Make sure we have enough data for a minimal packet
     if input.len() < MIN_PACKET_SIZE {
         debug!("Incomplete data, don't have enough for minimal packet");
@@ -79,7 +78,7 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     }
 
     // Parse the packet payload
-    match AnppPacket::from_bytes(packet_id, payload) {
+    match Packet::from_bytes(packet_id, payload) {
         Ok(packet) => Ok((packet, packet_length)),
         Err(_) => {
             debug!("Failed to parse payload for packet ID {}", packet_id);
@@ -100,7 +99,7 @@ pub enum DatagramError {
 /// start at byte 0 — no scanning.
 pub fn parse_datagram(datagram: &[u8]) -> core::result::Result<Packet, DatagramError> {
     match parse_packet(datagram) {
-        Ok((packet, _len)) => Ok(packet.into()),
+        Ok((packet, _len)) => Ok(packet),
         Err(ParseError::IncompleteData) => Err(DatagramError::IncompleteData),
         Err(ParseError::InvalidHeader) => Err(DatagramError::InvalidHeader),
         Err(ParseError::InvalidCRC) => Err(DatagramError::InvalidCrc),
@@ -151,7 +150,7 @@ impl AnppParser {
                         self.buf_start = 0;
                     }
 
-                    return Some(packet.into());
+                    return Some(packet);
                 },
                 Err(ParseError::IncompleteData) => {
                     return None;
@@ -192,7 +191,7 @@ impl Default for AnppParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::packet::{PacketId, system::RequestPacket};
+    use crate::packet::{PacketId, system::Request};
     use binrw::BinWrite;
 
     #[test]
@@ -216,7 +215,7 @@ mod tests {
         let mut parser = AnppParser::new();
 
         // Create a request packet manually
-        let packet_data = RequestPacket { packet_id: 20 }; // Request system state
+        let packet_data = Request { requested_packet: PacketKind::SystemState };
         let _packet_bytes = packet_data.write_le(&mut std::io::Cursor::new(Vec::new())).unwrap();
 
         // This would need proper ANPP framing to test fully
@@ -273,7 +272,7 @@ mod tests {
         let mut parser = AnppParser::new();
         let packet = parser.consume(&frame).expect("should parse unsupported packet");
 
-        assert!(matches!(packet, Packet::Unsupported));
+        assert!(matches!(packet, Packet::Unsupported(_)));
         assert_eq!(parser.buffer_len(), 0);
     }
 
@@ -317,7 +316,7 @@ mod tests {
     fn test_parse_datagram_unsupported() {
         let frame = AnppProtocol::get_packet_bytes(PacketId::new(255), &[0xAA]).unwrap();
         let packet = parse_datagram(&frame).expect("should parse unsupported datagram");
-        assert!(matches!(packet, Packet::Unsupported));
+        assert!(matches!(packet, Packet::Unsupported(_)));
     }
 
     #[test]

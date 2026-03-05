@@ -1,5 +1,5 @@
 use crate::error::{AnError, Result};
-use crate::packet::{PacketId, AnppHeader, AnppPacket, system::RequestPacket};
+use crate::packet::{PacketId, PacketKind, AnppHeader, Packet, system::Request};
 use crc::{Crc, Algorithm};
 use binrw::{BinRead, BinWrite};
 use std::io::Cursor;
@@ -140,25 +140,18 @@ impl AnppProtocol {
         Ok(())
     }
 
-    /// Create an ANPP packet from AnppPacket enum
-    pub(crate) fn get_bytes_from_packet(packet: AnppPacket) -> Result<Vec<u8>> {
-        let packet_id = PacketId::new(packet.packet_id());
-        let data = packet.to_bytes()?;
-        Self::get_packet_bytes(packet_id, &data)
-    }
-
-    /// Parse raw bytes into AnppPacket enum
+    /// Parse raw bytes into Packet enum
     #[allow(dead_code)]
-    pub(crate) fn parse_bytes(packet: &[u8]) -> Result<AnppPacket> {
+    pub(crate) fn parse_bytes(packet: &[u8]) -> Result<Packet> {
         let (header, data) = Self::get_header_from_bytes(packet)?;
-        AnppPacket::from_bytes(header.packet_id.as_u8(), &data)
+        Packet::from_bytes(header.packet_id.as_u8(), &data)
     }
 
     /// Create a request packet for the specified packet ID
     #[allow(dead_code)]
-    pub(crate) fn create_request_packet(requested_packet_id: PacketId) -> RequestPacket {
-        RequestPacket {
-            packet_id: requested_packet_id.as_u8()
+    pub(crate) fn create_request(requested_packet_id: PacketId) -> Request {
+        Request {
+            requested_packet: PacketKind::from(requested_packet_id.as_u8())
         }
     }
 }
@@ -199,7 +192,7 @@ mod tests {
     #[test]
     fn test_request_packet_creation() {
         let requested_id = PacketId::new(3);
-        let request_packet = AnppProtocol::create_request_packet(requested_id);
+        let request_packet = AnppProtocol::create_request(requested_id);
 
         // Serialize to bytes
         let mut cursor = std::io::Cursor::new(Vec::new());
@@ -207,7 +200,7 @@ mod tests {
         let data = cursor.into_inner();
 
         // Should be a request for packet ID 3
-        assert_eq!(request_packet.packet_id, 3);
+        assert_eq!(request_packet.requested_packet.packet_id(), 3);
         assert_eq!(data, vec![3]); // Just the requested packet ID
     }
 

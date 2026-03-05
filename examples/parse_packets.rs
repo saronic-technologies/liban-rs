@@ -198,7 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("EXTERNAL TIME: {}s + {}μs", p.unix_time_seconds, p.microseconds);
                 }
 
-                liban::Packet::Unsupported => {
+                liban::Packet::Unsupported(_) => {
                     println!("Unsupported packet type");
                 }
 
