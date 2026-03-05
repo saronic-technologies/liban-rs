@@ -26,19 +26,6 @@ type Result<T> = core::result::Result<(T, usize), ParseError>;
 // Constants for our parser
 const MIN_PACKET_SIZE: usize = 5; // 1 LRC + 1 ID + 1 length + 2 CRC16
 
-/// Calculate the Linear Redundancy Check (LRC) for ANPP header
-fn calculate_lrc(packet_id: u8, length: u8, crc16: u16) -> u8 {
-    let crc_low = (crc16 & 0xFF) as u8;
-    let crc_high = ((crc16 >> 8) & 0xFF) as u8;
-
-    // Use wrapping arithmetic to handle overflow
-    let sum = packet_id
-        .wrapping_add(length)
-        .wrapping_add(crc_low)
-        .wrapping_add(crc_high);
-    (sum ^ 0xFF).wrapping_add(1)
-}
-
 fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     // Make sure we have enough data for a minimal packet
     if input.len() < MIN_PACKET_SIZE {
@@ -51,33 +38,10 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     let packet_id = input[1];
     let payload_length = input[2];
 
-    // Basic sanity check on packet length
-    if payload_length > 100 { // ANPP packets are typically much smaller
-        debug!("Payload length {} seems too large, probably invalid data", payload_length);
-        return Err(ParseError::InvalidHeader);
-    }
-
-    // Check if this is a supported packet type
-    let packet_kind = PacketKind::from(packet_id);
-    if let PacketKind::Unsupported = packet_kind {
-        debug!("Unsupported packet ID: {}", packet_id);
-        // For unsupported packets, we still return them as Unsupported variant
-        return Err(ParseError::InvalidHeader);
-    }
-
-    // Validate payload length matches expected length for this packet type
-    if let Some(expected_length) = packet_kind.byte_length() {
-        if payload_length as usize != expected_length {
-            debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
-                   packet_id, expected_length, payload_length);
-            return Err(ParseError::InvalidPayload);
-        }
-    }
-
-    let packet_length = payload_length + 5; // length in packet does not include header
+    let packet_length = payload_length as usize + 5; // length in packet does not include header
 
     // Ensure we have the complete packet
-    if input.len() < packet_length as usize {
+    if input.len() < packet_length {
         debug!("Don't have full packet, need {} bytes but have {}", packet_length, input.len());
         return Err(ParseError::IncompleteData);
     }
@@ -86,7 +50,7 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     let crc16 = u16::from_le_bytes([input[3], input[4]]);
 
     // Validate header LRC
-    let calculated_lrc = calculate_lrc(packet_id, payload_length, crc16);
+    let calculated_lrc = AnppProtocol::calculate_lrc(packet_id, payload_length, crc16);
     if header_lrc != calculated_lrc {
         debug!("Invalid header LRC for packet ID {}: expected {:#02x}, got {:#02x}",
                packet_id, calculated_lrc, header_lrc);
@@ -94,11 +58,9 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     }
 
     // Extract payload (everything between header and CRC16)
-    let payload_start = 5;
-    let payload_end = packet_length as usize;
-    let payload = &input[payload_start..payload_end];
+    let payload = &input[5..packet_length];
 
-    // Validate packet CRC16 (calculated over packet ID + length + payload)
+    // Validate packet CRC16 (calculated over payload)
     let calculated_crc = AnppProtocol::calculate_crc16(payload);
     if crc16 != calculated_crc {
         debug!("Invalid CRC16 for packet ID {}: expected {:#04x}, got {:#04x}",
@@ -106,9 +68,19 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
         return Err(ParseError::InvalidCRC);
     }
 
+    // Validate payload length matches expected length for known packet types
+    let packet_kind = PacketKind::from(packet_id);
+    if let Some(expected_length) = packet_kind.byte_length() {
+        if payload_length as usize != expected_length {
+            debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
+                   packet_id, expected_length, payload_length);
+            return Err(ParseError::InvalidPayload);
+        }
+    }
+
     // Parse the packet payload
     match AnppPacket::from_bytes(packet_id, payload) {
-        Ok(packet) => Ok((packet, payload_length as usize)),
+        Ok(packet) => Ok((packet, packet_length)),
         Err(_) => {
             debug!("Failed to parse payload for packet ID {}", packet_id);
             Err(ParseError::InvalidPayload)
@@ -116,6 +88,31 @@ fn parse_packet(input: &[u8]) -> Result<AnppPacket> {
     }
 }
 
+#[derive(Debug)]
+pub enum DatagramError {
+    IncompleteData,
+    InvalidHeader,
+    InvalidCrc,
+    InvalidPayload,
+}
+
+/// Parse a single ANPP packet from a datagram. Expects the packet to
+/// start at byte 0 — no scanning.
+pub fn parse_datagram(datagram: &[u8]) -> core::result::Result<Packet, DatagramError> {
+    match parse_packet(datagram) {
+        Ok((packet, _len)) => Ok(packet.into()),
+        Err(ParseError::IncompleteData) => Err(DatagramError::IncompleteData),
+        Err(ParseError::InvalidHeader) => Err(DatagramError::InvalidHeader),
+        Err(ParseError::InvalidCRC) => Err(DatagramError::InvalidCrc),
+        Err(ParseError::InvalidPayload) => Err(DatagramError::InvalidPayload),
+    }
+}
+
+/// Stateful stream parser for TCP or other byte-stream transports.
+///
+/// Buffers incoming bytes and scans for valid ANPP packets. When a parse
+/// attempt fails, advances by one byte and retries — necessary because
+/// TCP provides no packet boundaries.
 pub struct AnppParser {
     buf: Vec<u8>,
     buf_start: usize, // Start position of valid data in buffer
@@ -195,7 +192,7 @@ impl Default for AnppParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::packet::system::RequestPacket;
+    use crate::packet::{PacketId, system::RequestPacket};
     use binrw::BinWrite;
 
     #[test]
@@ -211,7 +208,7 @@ mod tests {
         let sum = packet_id.wrapping_add(length).wrapping_add(crc_low).wrapping_add(crc_high);
         let expected_lrc = (sum ^ 0xFF).wrapping_add(1);
 
-        assert_eq!(calculate_lrc(packet_id, length, crc16), expected_lrc);
+        assert_eq!(AnppProtocol::calculate_lrc(packet_id, length, crc16), expected_lrc);
     }
 
     #[test]
@@ -248,5 +245,99 @@ mod tests {
 
         parser.clear();
         assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_round_trip_request_packet() {
+        // Build a valid ANPP frame for a Request packet (ID=1, payload=[20])
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+
+        let mut parser = AnppParser::new();
+        let packet = parser.consume(&frame).expect("should parse a valid packet");
+
+        match packet {
+            Packet::Request(req) => assert_eq!(req.requested_packet, PacketKind::SystemState),
+            other => panic!("expected Request packet, got {:?}", other),
+        }
+
+        // Buffer should be fully consumed
+        assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_unsupported_packet_skipped_cleanly() {
+        // Build a valid ANPP frame for an unsupported packet ID (e.g. 255)
+        let payload = [0xAA, 0xBB, 0xCC];
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(255), &payload).unwrap();
+
+        let mut parser = AnppParser::new();
+        let packet = parser.consume(&frame).expect("should parse unsupported packet");
+
+        assert!(matches!(packet, Packet::Unsupported));
+        assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_two_packets_back_to_back() {
+        let frame1 = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        let frame2 = AnppProtocol::get_packet_bytes(PacketId::new(1), &[21]).unwrap();
+
+        let mut combined = frame1;
+        combined.extend_from_slice(&frame2);
+
+        let mut parser = AnppParser::new();
+        let p1 = parser.consume(&combined).expect("should parse first packet");
+        match p1 {
+            Packet::Request(req) => assert_eq!(req.requested_packet, PacketKind::SystemState),
+            other => panic!("expected Request(20), got {:?}", other),
+        }
+
+        // Drain second packet without re-appending
+        let p2 = parser.consume(&[]).expect("should parse second packet");
+        match p2 {
+            Packet::Request(req) => assert_eq!(req.requested_packet, PacketKind::UnixTime),
+            other => panic!("expected Request(21), got {:?}", other),
+        }
+
+        assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_parse_datagram_valid() {
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        let packet = parse_datagram(&frame).expect("should parse a valid datagram");
+
+        match packet {
+            Packet::Request(req) => assert_eq!(req.requested_packet, PacketKind::SystemState),
+            other => panic!("expected Request packet, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_datagram_unsupported() {
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(255), &[0xAA]).unwrap();
+        let packet = parse_datagram(&frame).expect("should parse unsupported datagram");
+        assert!(matches!(packet, Packet::Unsupported));
+    }
+
+    #[test]
+    fn test_parse_datagram_incomplete() {
+        assert!(matches!(parse_datagram(&[0x01, 0x02]), Err(DatagramError::IncompleteData)));
+    }
+
+    #[test]
+    fn test_parse_datagram_invalid_lrc() {
+        let mut frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        frame[0] ^= 0xFF; // corrupt LRC
+        assert!(matches!(parse_datagram(&frame), Err(DatagramError::InvalidHeader)));
+    }
+
+    #[test]
+    fn test_parse_datagram_invalid_crc() {
+        let mut frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        // corrupt payload byte (changes CRC but not LRC)
+        let last = frame.len() - 1;
+        frame[last] ^= 0xFF;
+        assert!(matches!(parse_datagram(&frame), Err(DatagramError::InvalidCrc)));
     }
 }

@@ -1,31 +1,22 @@
 [package]
 description = "A library to parse Advanced Navigation Packet Protocol messages"
-edition = "2021"
+edition = "2024"
 name = "liban"
-version = "0.3.1"
+version = "0.4.0"
 license = "MPL-2.0"
 homepage = "https://github.com/saronic-technologies/liban-rs"
 repository = "https://github.com/saronic-technologies/liban-rs"
 readme = "README.md"
 
 [dependencies]
-binrw = "0.13"
+binrw = "0.15"
 bitflags = { version = "2.4", features = ["serde"] }
-bytes = "1.5"
 crc = "3.0"
 paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
+thiserror = "2.0"
 tracing = "0.1"
 
 [dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }
-futures = "0.3"
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["io-util", "net", "time", "macros", "rt-multi-thread"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-
-[[example]]
-name = "boreas_interface"
-required-features = []
