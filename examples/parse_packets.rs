@@ -42,8 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        // Feed data to parser and get packets
-        while let Some(packet) = parser.consume(&buffer[..n]) {
+        // Feed data to parser and drain all packets
+        let mut input: &[u8] = &buffer[..n];
+        while let Some(packet) = parser.consume(input) {
+            input = &[]; // subsequent calls drain without re-appending
             println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
             // Parser returns clean types directly - no conversion needed!

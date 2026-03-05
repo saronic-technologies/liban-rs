@@ -25,6 +25,17 @@ impl AnppProtocol {
         Self::CRC16.checksum(data)
     }
 
+    /// Calculate the Linear Redundancy Check (LRC) for an ANPP header
+    pub fn calculate_lrc(packet_id: u8, length: u8, crc16: u16) -> u8 {
+        let crc_low = (crc16 & 0xFF) as u8;
+        let crc_high = ((crc16 >> 8) & 0xFF) as u8;
+        let sum = packet_id
+            .wrapping_add(length)
+            .wrapping_add(crc_low)
+            .wrapping_add(crc_high);
+        (sum ^ 0xFF).wrapping_add(1)
+    }
+
     /// Create an ANPP packet from structured components
     pub fn get_packet_bytes(packet_id: PacketId, data: &[u8]) -> Result<Vec<u8>> {
         if data.len() > 255 {
@@ -35,16 +46,11 @@ impl AnppProtocol {
         let crc16 = Self::calculate_crc16(data);
 
         // Calculate Header LRC
-        let crc_bytes = crc16.to_le_bytes();
-        let mut header_lrc = ((packet_id.as_u8() as u16 + length as u16
-                             + crc_bytes[0] as u16 + crc_bytes[1] as u16) ^ 0xFF) + 1;
-        if header_lrc > 255 {
-            header_lrc %= 256;
-        }
+        let header_lrc = Self::calculate_lrc(packet_id.as_u8(), length, crc16);
 
         // Build header
         let header = AnppHeader {
-            header_lrc: header_lrc as u8,
+            header_lrc,
             packet_id,
             length,
             crc16,
@@ -122,14 +128,9 @@ impl AnppProtocol {
         }
 
         // Validate header LRC
-        let crc_bytes = header.crc16.to_le_bytes();
-        let mut expected_lrc = ((header.packet_id.as_u8() as u16 + header.length as u16
-                               + crc_bytes[0] as u16 + crc_bytes[1] as u16) ^ 0xFF) + 1;
-        if expected_lrc > 255 {
-            expected_lrc %= 256;
-        }
+        let expected_lrc = Self::calculate_lrc(header.packet_id.as_u8(), header.length, header.crc16);
 
-        if header.header_lrc != expected_lrc as u8 {
+        if header.header_lrc != expected_lrc {
             return Err(AnError::InvalidPacket(format!(
                 "Header LRC mismatch: expected 0x{:02X}, got 0x{:02X}",
                 expected_lrc, header.header_lrc

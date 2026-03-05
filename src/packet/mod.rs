@@ -63,7 +63,7 @@ macro_rules! define_packets {
             )+
 
             /// Core enum that represents the packet kind
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
             pub enum PacketKind {
                 $( $variant, )+
                 Unsupported,

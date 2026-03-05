@@ -92,7 +92,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        while let Some(packet) = parser.consume(&buffer[..n]) {
+        let mut input: &[u8] = &buffer[..n];
+        while let Some(packet) = parser.consume(input) {
+            input = &[];
             match packet {
                 Packet::DeviceInformation(info) => {
                     if received_configs.insert("DeviceInformation") {

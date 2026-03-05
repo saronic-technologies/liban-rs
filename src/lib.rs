@@ -12,7 +12,7 @@ pub mod types;
 
 pub use error::{AnError, Result};
 pub use packet::PacketKind;
-pub use parser::AnppParser;
+pub use parser::{AnppParser, parse_datagram, DatagramError};
 
 // Re-export clean API types as the primary public interface
 pub use types::*;
