@@ -778,8 +778,11 @@ impl GnssReceiverInformation {
 
     /// Get serial number as a string
     pub fn serial_number_str(&self) -> &str {
-        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(24);
-        std::str::from_utf8(&self.serial_number[..len]).unwrap_or("")
+        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(self.serial_number.len());
+        match std::str::from_utf8(&self.serial_number[..len]) {
+            Ok(s) if !s.is_empty() => s,
+            _ => "unknown",
+        }
     }
 }
 
