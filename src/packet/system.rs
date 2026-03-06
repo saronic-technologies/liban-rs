@@ -11,9 +11,9 @@ pub enum AcknowledgeResult {
     UnknownPacket = 2,
 }
 
-impl AcknowledgeResult {
-    fn from_raw(val: u8) -> Self {
-        match val {
+impl From<u8> for AcknowledgeResult {
+    fn from(v: u8) -> Self {
+        match v {
             0 => Self::Success,
             1 => Self::Failure,
             2 => Self::UnknownPacket,
@@ -30,7 +30,7 @@ pub struct Acknowledge {
     #[bw(map = |x: &PacketKind| x.packet_id())]
     pub acknowledged_packet: PacketKind,
     pub packet_crc: u16,
-    #[br(map = |x: u8| AcknowledgeResult::from_raw(x))]
+    #[br(map = |x: u8| AcknowledgeResult::from(x))]
     #[bw(map = |x: &AcknowledgeResult| *x as u8)]
     pub result: AcknowledgeResult,
 }
@@ -51,12 +51,70 @@ pub struct BootMode {
     pub boot_mode: u8,
 }
 
+/// Advanced Navigation device type
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u32)]
+pub enum DeviceType {
+    #[default]
+    Unknown = 0,
+    Spatial = 1,
+    SpatialFog = 4,
+    SpatialDual = 5,
+    Orientus = 11,
+    AirDataUnit = 13,
+    Subsonus = 14,
+    SpatialFogDual = 16,
+    Motus = 17,
+    GnssCompass = 19,
+    SubsonusTag = 21,
+    Poseidon = 22,
+    Certus = 26,
+    BoreasD90 = 28,
+    BoreasD70 = 41,
+    BoreasA90 = 43,
+    BoreasA70 = 44,
+    CertusMiniA = 49,
+    CertusMiniN = 50,
+    CertusMiniD = 51,
+    BoreasD50 = 54,
+    BoreasA50 = 56,
+}
+
+impl From<u32> for DeviceType {
+    fn from(v: u32) -> Self {
+        match v {
+            1 => Self::Spatial,
+            4 => Self::SpatialFog,
+            5 => Self::SpatialDual,
+            11 => Self::Orientus,
+            13 => Self::AirDataUnit,
+            14 => Self::Subsonus,
+            16 => Self::SpatialFogDual,
+            17 => Self::Motus,
+            19 => Self::GnssCompass,
+            21 => Self::SubsonusTag,
+            22 => Self::Poseidon,
+            26 => Self::Certus,
+            28 => Self::BoreasD90,
+            41 => Self::BoreasD70,
+            43 => Self::BoreasA90,
+            44 => Self::BoreasA70,
+            49 => Self::CertusMiniA,
+            50 => Self::CertusMiniN,
+            51 => Self::CertusMiniD,
+            54 => Self::BoreasD50,
+            56 => Self::BoreasA50,
+            _ => Self::Unknown,
+        }
+    }
+}
+
 /// Device information packet (Packet ID 3, Length 24) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct DeviceInformation {
     pub software_version: u32,
-    pub device_id: u32,
+    pub device_type: DeviceType,
     pub hardware_revision: u32,
     pub serial_number_1: u32,
     pub serial_number_2: u32,

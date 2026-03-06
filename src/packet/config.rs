@@ -245,6 +245,29 @@ pub struct IpDataport {
     pub mode: IpDataportMode,
 }
 
+/// User data packet (Packet ID 198, Length 64) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct UserData {
+    #[serde(with = "serde_bytes_64")]
+    pub data: [u8; 64],
+}
+
+mod serde_bytes_64 {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(data: &[u8; 64], serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        serializer.serialize_bytes(data)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<[u8; 64], D::Error>
+    where D: Deserializer<'de> {
+        let v = <Vec<u8>>::deserialize(deserializer)?;
+        v.try_into().map_err(|_| serde::de::Error::custom("expected 64 bytes"))
+    }
+}
+
 /// IP dataports configuration packet (Packet ID 202, Length 30) - Read/Write
 #[binrw]
 #[brw(little)]

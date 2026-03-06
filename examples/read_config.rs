@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("DEVICE INFORMATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("  Software Version: 0x{:08X}", info.software_version);
-                        println!("  Device ID:        {}", info.device_id);
+                        println!("  Device Type:      {:?}", info.device_type);
                         println!("  Hardware Rev:     {}", info.hardware_revision);
                         println!("  Serial Number:    {:08X}-{:08X}-{:08X}",
                                  info.serial_number_1, info.serial_number_2, info.serial_number_3);

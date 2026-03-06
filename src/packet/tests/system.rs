@@ -48,7 +48,7 @@ mod tests {
     fn test_device_information_packet_length() {
         let packet = DeviceInformation {
             software_version: 0x01020304,
-            device_id: 0x05060708,
+            device_type: crate::packet::system::DeviceType::Unknown,
             hardware_revision: 0x090A0B0C,
             serial_number_1: 111111,
             serial_number_2: 222222,
@@ -121,7 +121,7 @@ mod tests {
         // DeviceInformation round-trip
         let dev_original = DeviceInformation {
             software_version: 0x12345678,
-            device_id: 0x87654321,
+            device_type: crate::packet::system::DeviceType::Certus,
             hardware_revision: 0xDEADBEEF,
             serial_number_1: 987654,
             serial_number_2: 321098,
