@@ -69,17 +69,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("   Heading: {:.2}°", p.heading.to_degrees());
 
                     println!("\nGNSS STATUS:");
-                    println!("   Fix Type: {:?}", p.filter_status.gnss_fix_type);
-                    println!("   Navigation Initialized: {}", p.filter_status.navigation_filter_initialised);
-                    println!("   Heading Initialized: {}", p.filter_status.heading_initialised);
+                    println!("   Fix Type: {:?}", p.filter_status.gnss_fix_type());
+                    println!("   Navigation Initialized: {}", p.filter_status.navigation_filter_initialised());
+                    println!("   Heading Initialized: {}", p.filter_status.heading_initialised());
 
-                    // Clean boolean fields instead of bitflags
                     let mut warnings = Vec::new();
-                    if p.system_status.system_failure { warnings.push("System Failure"); }
-                    if p.system_status.gnss_failure { warnings.push("GNSS Failure"); }
-                    if p.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
-                    if p.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
-                    if p.system_status.gnss_antenna_disconnected { warnings.push("GNSS Antenna Disconnected"); }
+                    if p.system_status.system_failure() { warnings.push("System Failure"); }
+                    if p.system_status.gnss_failure() { warnings.push("GNSS Failure"); }
+                    if p.system_status.internal_data_logging_error() { warnings.push("Data Logging Error"); }
+                    if p.system_status.high_voltage_alarm() { warnings.push("High Voltage"); }
+                    if p.system_status.gnss_antenna_disconnected() { warnings.push("GNSS Antenna Disconnected"); }
 
                     if !warnings.is_empty() {
                         println!("\nWARNINGS:");
@@ -99,14 +98,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Status");
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("STATUS:");
-                    println!("   GNSS Fix: {:?}", p.filter_status.gnss_fix_type);
+                    println!("   GNSS Fix: {:?}", p.filter_status.gnss_fix_type());
 
-                    // Individual boolean fields
                     let mut warnings = Vec::new();
-                    if p.system_status.system_failure { warnings.push("System Failure"); }
-                    if p.system_status.gnss_failure { warnings.push("GNSS Failure"); }
-                    if p.system_status.low_voltage_alarm { warnings.push("Low Voltage"); }
-                    if p.system_status.high_voltage_alarm { warnings.push("High Voltage"); }
+                    if p.system_status.system_failure() { warnings.push("System Failure"); }
+                    if p.system_status.gnss_failure() { warnings.push("GNSS Failure"); }
+                    if p.system_status.internal_data_logging_error() { warnings.push("Data Logging Error"); }
+                    if p.system_status.high_voltage_alarm() { warnings.push("High Voltage"); }
 
                     if warnings.is_empty() {
                         println!("   All systems nominal");
@@ -160,7 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                     println!("DEVICE INFORMATION:");
                     println!("   Software Version: 0x{:08X}", p.software_version);
-                    println!("   Device ID:        {}", p.device_id);
+                    println!("   Device Type:      {:?}", p.device_type);
                     println!("   Hardware Rev:     {}", p.hardware_revision);
                     println!("   Serial Number:    {:08X}-{:08X}-{:08X}",
                              p.serial_number_1, p.serial_number_2, p.serial_number_3);

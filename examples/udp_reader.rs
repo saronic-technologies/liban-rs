@@ -45,11 +45,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Packet::Status(s) => {
                         println!("#{packet_count} [{src}] Status: GNSS={:?}",
-                                s.filter_status.gnss_fix_type);
+                                s.filter_status.gnss_fix_type());
                     }
                     Packet::DeviceInformation(info) => {
-                        println!("#{packet_count} [{src}] DeviceInfo: SW=0x{:08X} ID={} HW={}",
-                                info.software_version, info.device_id, info.hardware_revision);
+                        println!("#{packet_count} [{src}] DeviceInfo: SW=0x{:08X} Type={:?} HW={}",
+                                info.software_version, info.device_type, info.hardware_revision);
                     }
                     Packet::Acknowledge(ack) => {
                         println!("#{packet_count} [{src}] Ack: {:?} -> {:?}",

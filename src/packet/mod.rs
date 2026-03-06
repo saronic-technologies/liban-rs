@@ -48,11 +48,20 @@ pub trait HasPacketId {
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
             RestoreFactorySettings, Reset, IpConfiguration};
 use state::{SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
-            EulerOrientationStdDev, RawSensors, Satellites, ExternalTime, Heave,
-            SensorTemperature, GnssPositionVelocityTime, GnssOrientation};
+            EulerOrientationStdDev, QuaternionOrientationStdDev,
+            RawSensors, RawGnss, Satellites,
+            GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
+            Acceleration, BodyAcceleration, EulerOrientation, QuaternionOrientation,
+            DcmOrientation, AngularVelocity, AngularAcceleration,
+            ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
+            ExternalBodyVelocity, ExternalHeading,
+            RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
+            Heave, RawDvlData,
+            GnssReceiverInformation, SensorTemperature,
+            GnssPositionVelocityTime, GnssOrientation};
 use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
             FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
-            ReferencePointOffsets, IpDataportsConfiguration};
+            ReferencePointOffsets, UserData, IpDataportsConfiguration};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -168,10 +177,34 @@ define_packets!(
     PositionStdDev => 24, Some(12),
     VelocityStdDev => 25, Some(12),
     EulerOrientationStdDev => 26, Some(12),
+    QuaternionOrientationStdDev => 27, Some(16),
     RawSensors => 28, Some(48),
+    RawGnss => 29, Some(74),
     Satellites => 30, Some(13),
+GeodeticPosition => 32, Some(24),
+    EcefPosition => 33, Some(24),
+    UtmPosition => 34, Some(26),
+    NedVelocity => 35, Some(12),
+    BodyVelocity => 36, Some(12),
+    Acceleration => 37, Some(12),
+    BodyAcceleration => 38, Some(16),
+    EulerOrientation => 39, Some(12),
+    QuaternionOrientation => 40, Some(16),
+    DcmOrientation => 41, Some(36),
+    AngularVelocity => 42, Some(12),
+    AngularAcceleration => 43, Some(12),
+    ExternalPositionVelocity => 44, Some(60),
+    ExternalPosition => 45, Some(36),
+    ExternalVelocity => 46, Some(24),
+    ExternalBodyVelocity => 47, Some(16),
+    ExternalHeading => 48, Some(8),
+    RunningTime => 49, Some(8),
     ExternalTime => 52, Some(8),
+    GeoidHeight => 54, Some(4),
+    RtcmCorrections => 55, None,
     Heave => 58, Some(16),
+    GnssReceiverInformation => 69, Some(68),
+    RawDvlData => 70, Some(60),
     SensorTemperature => 85, Some(32),
     GnssPositionVelocityTime => 92, Some(76),
     GnssOrientation => 93, Some(36),
@@ -184,6 +217,7 @@ define_packets!(
     OdometerConfiguration => 192, Some(8),
     SetZeroOrientationAlignment => 193, Some(1),
     ReferencePointOffsets => 194, Some(49),
+    UserData => 198, Some(64),
     IpDataportsConfiguration => 202, Some(30),
 );
 
@@ -193,11 +227,16 @@ impl Packet {
         match self {
             Packet::Request(_) | Packet::BootMode(_) |
             Packet::RestoreFactorySettings(_) | Packet::Reset(_) |
-            Packet::IpConfiguration(_) | Packet::ExternalTime(_) |
+            Packet::IpConfiguration(_) |
+            Packet::ExternalPositionVelocity(_) | Packet::ExternalPosition(_) |
+            Packet::ExternalVelocity(_) | Packet::ExternalBodyVelocity(_) |
+            Packet::ExternalHeading(_) | Packet::ExternalTime(_) |
+            Packet::RtcmCorrections(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
-            Packet::ReferencePointOffsets(_) | Packet::IpDataportsConfiguration(_) => {
+            Packet::ReferencePointOffsets(_) | Packet::UserData(_) |
+            Packet::IpDataportsConfiguration(_) => {
                 let packet_id = PacketId::new(self.packet_id());
                 let data = self.payload_bytes()?;
                 crate::protocol::AnppProtocol::get_packet_bytes(packet_id, &data)

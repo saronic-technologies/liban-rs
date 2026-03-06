@@ -5,7 +5,6 @@ mod tests {
         EulerOrientationStdDev, RawSensors, SensorTemperature,
         GnssPositionVelocityTime, GnssOrientation,
         SystemStatus, FilterStatus, GnssPvtStatus, GnssOrientationStatus,
-        GnssFixType,
     };
     use binrw::{BinRead, BinWrite};
 
@@ -13,10 +12,7 @@ mod tests {
     fn test_system_state_packet_length() {
         let packet = SystemState {
             system_status: SystemStatus::default(),
-            filter_status: FilterStatus {
-                orientation_filter_initialised: true,
-                ..Default::default()
-            },
+            filter_status: FilterStatus::from(0x0001u16),
             unix_time_seconds: 1640995200,
             microseconds: 123456,
             latitude: 0.78539816,
@@ -62,8 +58,8 @@ mod tests {
     #[test]
     fn test_status_packet_length() {
         let packet = Status {
-            system_status: SystemStatus { gnss_failure: true, low_voltage_alarm: true, ..Default::default() },
-            filter_status: FilterStatus { orientation_filter_initialised: true, heading_initialised: true, ..Default::default() },
+            system_status: SystemStatus::from(0b0001_0000_0010_0000u16), // gnss_failure + internal_data_logging_error
+            filter_status: FilterStatus::from(0b0000_0000_0000_0101u16), // orientation + heading
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
@@ -156,12 +152,7 @@ mod tests {
     fn test_gnss_position_velocity_time_packet_length() {
         let packet = GnssPositionVelocityTime {
             gnss_id: 0,
-            status: GnssPvtStatus {
-                gnss_fix_status: GnssFixType::Fix3D,
-                velocity_valid: true,
-                time_valid: true,
-                ..Default::default()
-            },
+            status: GnssPvtStatus::from(0b0000_0110_0000_0010u16), // Fix3D + velocity_valid + time_valid
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 500000,
             latitude: 0.78539816,
@@ -189,10 +180,7 @@ mod tests {
     fn test_gnss_orientation_packet_length() {
         let packet = GnssOrientation {
             gnss_id: 0,
-            status: GnssOrientationStatus {
-                gnss_fix_status: GnssFixType::RtkFixed,
-                ..Default::default()
-            },
+            status: GnssOrientationStatus::from(0x0007u16), // RtkFixed
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 500000,
             azimuth: 1.5707963,
@@ -212,8 +200,8 @@ mod tests {
     #[test]
     fn test_system_state_round_trip() {
         let original = SystemState {
-            system_status: SystemStatus { system_failure: true, gnss_antenna_disconnected: true, ..Default::default() },
-            filter_status: FilterStatus { navigation_filter_initialised: true, utc_time_initialised: true, ..Default::default() },
+            system_status: SystemStatus::from(0b0100_0000_0000_0001u16), // system_failure + gnss_antenna_disconnected
+            filter_status: FilterStatus::from(0b0000_0000_0000_1010u16), // navigation + utc_time
             unix_time_seconds: 1700000000,
             microseconds: 999999,
             latitude: -0.34906585,
@@ -251,12 +239,7 @@ mod tests {
     fn test_gnss_pvt_round_trip() {
         let original = GnssPositionVelocityTime {
             gnss_id: 1,
-            status: GnssPvtStatus {
-                gnss_fix_status: GnssFixType::RtkFixed,
-                velocity_valid: true,
-                time_valid: true,
-                ..Default::default()
-            },
+            status: GnssPvtStatus::from(0b0000_0110_0000_0111u16), // RtkFixed + velocity_valid + time_valid
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 123456,
             latitude: 0.6,
@@ -288,13 +271,7 @@ mod tests {
     fn test_gnss_orientation_round_trip() {
         let original = GnssOrientation {
             gnss_id: 0,
-            status: GnssOrientationStatus {
-                gnss_fix_status: GnssFixType::RtkFloat,
-                antenna_disconnected: false,
-                antenna_short: false,
-                gnss_failure: false,
-                ..Default::default()
-            },
+            status: GnssOrientationStatus::from(0x0006u16), // RtkFloat
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 654321,
             azimuth: 1.5,
