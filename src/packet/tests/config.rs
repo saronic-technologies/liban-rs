@@ -4,8 +4,9 @@ mod tests {
         PacketTimerPeriod, PacketsPeriod, PacketPeriod,
         InstallationAlignment, OffsetVector, FilterOptions, VehicleType,
         OdometerConfiguration, SetZeroOrientationAlignment,
-        ReferencePointOffsets, IpDataportsConfiguration,
-        IpDataport, IpDataportMode,
+        ReferencePointOffsets, DualAntennaConfiguration,
+        OffsetType, AutomaticOffsetOrientation,
+        IpDataportsConfiguration, IpDataport, IpDataportMode,
     };
     use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
@@ -219,6 +220,44 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(&bytes);
         let deserialized = FilterOptions::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn test_dual_antenna_configuration_packet_length() {
+        let packet = DualAntennaConfiguration {
+            permanent: true,
+            offset_type: OffsetType::Automatic,
+            automatic_offset_orientation: AutomaticOffsetOrientation::PrimaryFrontSecondaryRear,
+            manual_offset_x: 0.0,
+            manual_offset_y: 0.0,
+            manual_offset_z: 0.0,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 17, "DualAntennaConfiguration should be 17 bytes");
+    }
+
+    #[test]
+    fn test_dual_antenna_configuration_round_trip() {
+        let original = DualAntennaConfiguration {
+            permanent: false,
+            offset_type: OffsetType::Manual,
+            automatic_offset_orientation: AutomaticOffsetOrientation::PrimaryRightSecondaryLeft,
+            manual_offset_x: 1.5,
+            manual_offset_y: -0.3,
+            manual_offset_z: 0.75,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 17);
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = DualAntennaConfiguration::read_le(&mut cursor).expect("Failed to deserialize");
         assert_eq!(deserialized, original);
     }
 

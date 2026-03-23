@@ -61,7 +61,8 @@ use state::{SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
             GnssPositionVelocityTime, GnssOrientation};
 use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
             FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
-            ReferencePointOffsets, UserData, IpDataportsConfiguration};
+            ReferencePointOffsets, DualAntennaConfiguration, UserData,
+            IpDataportsConfiguration};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -217,6 +218,7 @@ GeodeticPosition => 32, Some(24),
     OdometerConfiguration => 192, Some(8),
     SetZeroOrientationAlignment => 193, Some(1),
     ReferencePointOffsets => 194, Some(49),
+    DualAntennaConfiguration => 196, Some(17),
     UserData => 198, Some(64),
     IpDataportsConfiguration => 202, Some(30),
 );
@@ -235,7 +237,8 @@ impl Packet {
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
-            Packet::ReferencePointOffsets(_) | Packet::UserData(_) |
+            Packet::ReferencePointOffsets(_) | Packet::DualAntennaConfiguration(_) |
+            Packet::UserData(_) |
             Packet::IpDataportsConfiguration(_) => {
                 let packet_id = PacketId::new(self.packet_id());
                 let data = self.payload_bytes()?;
