@@ -34,6 +34,24 @@ pub enum VehicleType {
     Train = 14,
 }
 
+/// Offset type for dual antenna configuration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u16)]
+pub enum OffsetType {
+    Manual = 0,
+    Automatic = 1,
+}
+
+/// Automatic offset orientation for dual antenna configuration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum AutomaticOffsetOrientation {
+    PrimaryFrontSecondaryRear = 0,
+    PrimaryRearSecondaryFront = 1,
+    PrimaryRightSecondaryLeft = 2,
+    PrimaryLeftSecondaryRight = 3,
+}
+
 /// IP dataport mode enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
@@ -266,6 +284,24 @@ mod serde_bytes_64 {
         let v = <Vec<u8>>::deserialize(deserializer)?;
         v.try_into().map_err(|_| serde::de::Error::custom("expected 64 bytes"))
     }
+}
+
+/// Dual antenna configuration packet (Packet ID 196, Length 17) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DualAntennaConfiguration {
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    pub offset_type: OffsetType,
+    pub automatic_offset_orientation: AutomaticOffsetOrientation,
+    #[br(temp)]
+    #[bw(calc = 0u8)]
+    _reserved: u8,
+    pub manual_offset_x: f32,
+    pub manual_offset_y: f32,
+    pub manual_offset_z: f32,
 }
 
 /// IP dataports configuration packet (Packet ID 202, Length 30) - Read/Write
