@@ -44,6 +44,19 @@ pub trait HasPacketId {
     const PACKET_ID: PacketId;
 }
 
+/// Describes the expected payload length for a packet kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PacketLength {
+    /// Exactly one valid length.
+    Fixed(usize),
+    /// A fixed set of valid lengths (e.g. optional trailing fields).
+    OneOf(&'static [usize]),
+    /// Length varies arbitrarily; no header check performed.
+    Variable,
+}
+
+use PacketLength::*;
+
 // Import packet types from their respective modules
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
             RestoreFactorySettings, Reset, IpConfiguration};
@@ -80,11 +93,11 @@ macro_rules! define_packets {
         }
 
         impl PacketKind {
-            /// Get the expected byte length for this packet kind
-            pub fn byte_length(&self) -> Option<usize> {
+            /// Get the expected payload length for this packet kind
+            pub fn byte_length(&self) -> PacketLength {
                 match self {
                     $( PacketKind::$variant => $length, )+
-                    PacketKind::Unsupported => None,
+                    PacketKind::Unsupported => Variable,
                 }
             }
 
@@ -163,64 +176,64 @@ macro_rules! define_packets {
 
 define_packets!(
     // System Packets (0-14)
-    Acknowledge => 0, Some(4),
-    Request => 1, Some(1),
-    BootMode => 2, Some(1),
-    DeviceInformation => 3, Some(24),
-    RestoreFactorySettings => 4, Some(4),
-    Reset => 5, Some(4),
-    IpConfiguration => 11, Some(30),
+    Acknowledge => 0, Fixed(4),
+    Request => 1, Fixed(1),
+    BootMode => 2, Fixed(1),
+    DeviceInformation => 3, Fixed(24),
+    RestoreFactorySettings => 4, Fixed(4),
+    Reset => 5, Fixed(4),
+    IpConfiguration => 11, Fixed(30),
 
     // State Packets (20-93)
-    SystemState => 20, Some(100),
-    UnixTime => 21, Some(8),
-    Status => 23, Some(4),
-    PositionStdDev => 24, Some(12),
-    VelocityStdDev => 25, Some(12),
-    EulerOrientationStdDev => 26, Some(12),
-    QuaternionOrientationStdDev => 27, Some(16),
-    RawSensors => 28, Some(48),
-    RawGnss => 29, Some(74),
-    Satellites => 30, Some(13),
-GeodeticPosition => 32, Some(24),
-    EcefPosition => 33, Some(24),
-    UtmPosition => 34, Some(26),
-    NedVelocity => 35, Some(12),
-    BodyVelocity => 36, Some(12),
-    Acceleration => 37, Some(12),
-    BodyAcceleration => 38, Some(16),
-    EulerOrientation => 39, Some(12),
-    QuaternionOrientation => 40, Some(16),
-    DcmOrientation => 41, Some(36),
-    AngularVelocity => 42, Some(12),
-    AngularAcceleration => 43, Some(12),
-    ExternalPositionVelocity => 44, Some(60),
-    ExternalPosition => 45, Some(36),
-    ExternalVelocity => 46, Some(24),
-    ExternalBodyVelocity => 47, None,
-    ExternalHeading => 48, Some(8),
-    RunningTime => 49, Some(8),
-    ExternalTime => 52, Some(8),
-    GeoidHeight => 54, Some(4),
-    RtcmCorrections => 55, None,
-    Heave => 58, Some(16),
-    GnssReceiverInformation => 69, Some(68),
-    RawDvlData => 70, Some(60),
-    SensorTemperature => 85, Some(32),
-    GnssPositionVelocityTime => 92, Some(76),
-    GnssOrientation => 93, Some(36),
+    SystemState => 20, Fixed(100),
+    UnixTime => 21, Fixed(8),
+    Status => 23, Fixed(4),
+    PositionStdDev => 24, Fixed(12),
+    VelocityStdDev => 25, Fixed(12),
+    EulerOrientationStdDev => 26, Fixed(12),
+    QuaternionOrientationStdDev => 27, Fixed(16),
+    RawSensors => 28, Fixed(48),
+    RawGnss => 29, Fixed(74),
+    Satellites => 30, Fixed(13),
+    GeodeticPosition => 32, Fixed(24),
+    EcefPosition => 33, Fixed(24),
+    UtmPosition => 34, Fixed(26),
+    NedVelocity => 35, Fixed(12),
+    BodyVelocity => 36, Fixed(12),
+    Acceleration => 37, Fixed(12),
+    BodyAcceleration => 38, Fixed(16),
+    EulerOrientation => 39, Fixed(12),
+    QuaternionOrientation => 40, Fixed(16),
+    DcmOrientation => 41, Fixed(36),
+    AngularVelocity => 42, Fixed(12),
+    AngularAcceleration => 43, Fixed(12),
+    ExternalPositionVelocity => 44, Fixed(60),
+    ExternalPosition => 45, Fixed(36),
+    ExternalVelocity => 46, Fixed(24),
+    ExternalBodyVelocity => 47, OneOf(&[16, 24]),
+    ExternalHeading => 48, Fixed(8),
+    RunningTime => 49, Fixed(8),
+    ExternalTime => 52, Fixed(8),
+    GeoidHeight => 54, Fixed(4),
+    RtcmCorrections => 55, Variable,
+    Heave => 58, Fixed(16),
+    GnssReceiverInformation => 69, Fixed(68),
+    RawDvlData => 70, Fixed(60),
+    SensorTemperature => 85, Fixed(32),
+    GnssPositionVelocityTime => 92, Fixed(76),
+    GnssOrientation => 93, Fixed(36),
 
     // Configuration Packets (180-203)
-    PacketTimerPeriod => 180, Some(4),
-    PacketsPeriod => 181, None,
-    InstallationAlignment => 185, Some(73),
-    FilterOptions => 186, Some(17),
-    OdometerConfiguration => 192, Some(8),
-    SetZeroOrientationAlignment => 193, Some(5),
-    ReferencePointOffsets => 194, Some(49),
-    DualAntennaConfiguration => 196, Some(17),
-    UserData => 198, Some(64),
-    IpDataportsConfiguration => 202, Some(30),
+    PacketTimerPeriod => 180, Fixed(4),
+    PacketsPeriod => 181, Variable,
+    InstallationAlignment => 185, Fixed(73),
+    FilterOptions => 186, Fixed(17),
+    OdometerConfiguration => 192, Fixed(8),
+    SetZeroOrientationAlignment => 193, Fixed(5),
+    ReferencePointOffsets => 194, Fixed(49),
+    DualAntennaConfiguration => 196, Fixed(17),
+    UserData => 198, Fixed(64),
+    IpDataportsConfiguration => 202, Fixed(30),
 );
 
 impl Packet {

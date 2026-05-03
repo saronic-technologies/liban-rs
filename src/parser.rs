@@ -64,12 +64,23 @@ fn parse_packet(input: &[u8]) -> Result<Packet> {
 
     // Validate payload length matches expected length for known packet types
     let packet_kind = PacketKind::from(packet_id);
-    if let Some(expected_length) = packet_kind.byte_length() {
-        if payload_length as usize != expected_length {
-            debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
-                   packet_id, expected_length, payload_length);
-            return Err(ParseError::InvalidPayload);
+    let len = payload_length as usize;
+    match packet_kind.byte_length() {
+        PacketLength::Fixed(expected) => {
+            if len != expected {
+                debug!("Payload length mismatch for packet ID {}: expected {} bytes, got {}",
+                       packet_id, expected, payload_length);
+                return Err(ParseError::InvalidPayload);
+            }
         }
+        PacketLength::OneOf(valid) => {
+            if !valid.contains(&len) {
+                debug!("Payload length mismatch for packet ID {}: expected one of {:?} bytes, got {}",
+                       packet_id, valid, payload_length);
+                return Err(ParseError::InvalidPayload);
+            }
+        }
+        PacketLength::Variable => {}
     }
 
     // Parse the packet payload
