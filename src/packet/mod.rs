@@ -69,7 +69,8 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
             ExternalBodyVelocity, ExternalHeading,
             RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
-            Wind, Heave, ExternalOdometer, ExternalAirData, RawDvlData,
+            Wind, Heave, ExternalOdometer, ExternalAirData, NorthSeekingInitialisationStatus,
+            RawDvlData,
             GnssReceiverInformation, SensorTemperature,
             GnssPositionVelocityTime, GnssOrientation};
 use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
@@ -224,6 +225,7 @@ define_packets!(
     ExternalOdometer => 67, Fixed(13),
     ExternalAirData => 68, Fixed(25),
     GnssReceiverInformation => 69, Fixed(68),
+    NorthSeekingInitialisationStatus => 71, Fixed(28),
     RawDvlData => 70, Fixed(60),
     SensorTemperature => 85, Fixed(32),
     GnssPositionVelocityTime => 92, Fixed(76),

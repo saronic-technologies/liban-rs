@@ -877,6 +877,52 @@ impl From<(u8, u8)> for GnssReceiverModel {
     }
 }
 
+/// North seeking initialisation status flags bitfield
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct NorthSeekingFlags(u16);
+
+impl NorthSeekingFlags {
+    pub fn raw(&self) -> u16 { self.0 }
+    pub fn initialisation_complete(&self) -> bool { self.0 & (1 << 0) != 0 }
+    pub fn cannot_start_position_unknown(&self) -> bool { self.0 & (1 << 1) != 0 }
+    pub fn solution_out_of_range(&self) -> bool { self.0 & (1 << 2) != 0 }
+    pub fn solution_non_orthogonal(&self) -> bool { self.0 & (1 << 3) != 0 }
+    pub fn restarted_excessive_movement(&self) -> bool { self.0 & (1 << 4) != 0 }
+    pub fn restarted_latitude_change(&self) -> bool { self.0 & (1 << 5) != 0 }
+    pub fn restarted_lever_arm_change(&self) -> bool { self.0 & (1 << 6) != 0 }
+    pub fn latitude_check_failed(&self) -> bool { self.0 & (1 << 7) != 0 }
+}
+
+impl From<u16> for NorthSeekingFlags {
+    fn from(v: u16) -> Self { Self(v) }
+}
+
+/// North seeking initialisation status packet (Packet ID 71, Length 28) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NorthSeekingInitialisationStatus {
+    /// Initialisation status flags
+    pub flags: NorthSeekingFlags,
+    /// Firmware version
+    pub version: u16,
+    /// Initialisation progress as a percentage
+    pub progress: u8,
+    /// Number of alignment attempts
+    pub alignment_attempts: u8,
+    #[br(temp)]
+    #[bw(calc = [0u8; 2])]
+    _reserved1: [u8; 2],
+    /// Coarse alignment heading in radians
+    pub coarse_alignment_heading: f32,
+    /// Predicted heading accuracy in radians
+    pub predicted_accuracy: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 12])]
+    _reserved2: [u8; 12],
+}
+
 /// GNSS receiver information packet (Packet ID 69, Length 68) - Read only
 #[binrw]
 #[brw(little)]
