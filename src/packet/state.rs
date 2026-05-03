@@ -990,6 +990,18 @@ pub struct Automotive {
     _reserved: [u8; 4],
 }
 
+/// Zero angular velocity packet (Packet ID 83, Length 8) - Write only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZeroAngularVelocity {
+    /// Duration the unit has been stationary about the heading axis in seconds
+    pub duration: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
 /// Sensor temperature packet (Packet ID 85, Length 32) - Read only
 #[binrw]
 #[brw(little)]
