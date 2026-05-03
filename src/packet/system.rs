@@ -179,6 +179,26 @@ pub struct IpConfiguration {
     pub boreas_serial_number_part_3: u32,
 }
 
+/// Extended device information packet (Packet ID 13, Length 36) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExtendedDeviceInformation {
+    /// Software version
+    pub software_version: u32,
+    /// Device type identifier
+    pub device_id: DeviceType,
+    /// Hardware revision
+    pub hardware_revision: u32,
+    /// Device serial number
+    pub serial_number: [u32; 3],
+    /// Device sub-type
+    pub device_sub_type: u32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 8])]
+    _reserved: [u8; 8],
+}
+
 /// Subcomponent device identifier
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubcomponentDeviceId {

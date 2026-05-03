@@ -73,8 +73,8 @@ where
 }
 
 // Import packet types from their respective modules
-use system::{Acknowledge, Request, BootMode, DeviceInformation,
-            RestoreFactorySettings, Reset, SerialPortPassthrough, IpConfiguration,
+use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
+            IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
             SubcomponentInformation};
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
@@ -205,6 +205,7 @@ define_packets!(
     Reset => 5, Fixed(4),
     SerialPortPassthrough => 10, Variable,
     IpConfiguration => 11, Fixed(30),
+    ExtendedDeviceInformation => 13, Fixed(36),
     SubcomponentInformation => 14, Variable,
 
     // State Packets (20-93)
@@ -248,11 +249,11 @@ define_packets!(
     RawSatelliteEphemeris => 61, OneOf(&[94, 132]),
     ExternalOdometer => 67, Fixed(13),
     ExternalAirData => 68, Fixed(25),
-    GnssReceiverInformation => 69, Fixed(68),
+    GnssReceiverInformation => 69, OneOf(&[48, 68]),
+    RawDvlData => 70, Fixed(60),
     NorthSeekingInitialisationStatus => 71, Fixed(28),
     GimbalState => 72, Fixed(8),
     Automotive => 73, Fixed(24),
-    RawDvlData => 70, Fixed(60),
     ZeroAngularVelocity => 83, Fixed(8),
     ExtendedSatellites => 84, Variable,
     SensorTemperature => 85, Fixed(32),
