@@ -735,6 +735,24 @@ impl From<u32> for DvlStatus {
     fn from(v: u32) -> Self { Self(v) }
 }
 
+/// External odometer packet (Packet ID 67, Length 13) - Write only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExternalOdometer {
+    /// Estimated measurement delay in seconds
+    pub estimated_delay: f32,
+    /// Speed in m/s
+    pub speed: f32,
+    #[br(temp)]
+    #[bw(calc = 0f32)]
+    _reserved: f32,
+    /// Whether the odometer supports reversing detection
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub reversing_detection_supported: bool,
+}
+
 /// Raw DVL data packet (Packet ID 70, Length 60) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
