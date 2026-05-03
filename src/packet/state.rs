@@ -640,6 +640,26 @@ pub struct RunningTime {
     pub microseconds: u32,
 }
 
+/// Odometer state packet (Packet ID 51, Length 20) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OdometerState {
+    pub pulse_count: i32,
+    /// Distance in meters
+    pub distance: f32,
+    /// Speed in m/s
+    pub speed: f32,
+    /// Slip in meters
+    pub slip: f32,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub active: bool,
+    #[br(temp)]
+    #[bw(calc = [0u8; 3])]
+    _reserved: [u8; 3],
+}
+
 /// External time packet (Packet ID 52, Length 8) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]

@@ -68,7 +68,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             DcmOrientation, AngularVelocity, AngularAcceleration,
             ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
             ExternalBodyVelocity, ExternalHeading,
-            RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
+            RunningTime, OdometerState, ExternalTime, GeoidHeight, RtcmCorrections,
             Heave, RawDvlData,
             GnssReceiverInformation, SensorTemperature,
             GnssPositionVelocityTime, GnssOrientation};
@@ -214,6 +214,7 @@ define_packets!(
     ExternalBodyVelocity => 47, OneOf(&[16, 24]),
     ExternalHeading => 48, Fixed(8),
     RunningTime => 49, Fixed(8),
+    OdometerState => 51, Fixed(20),
     ExternalTime => 52, Fixed(8),
     GeoidHeight => 54, Fixed(4),
     RtcmCorrections => 55, Variable,
