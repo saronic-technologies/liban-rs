@@ -74,7 +74,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
-use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
+use config::{PacketTimerPeriod, PacketsPeriod, BaudRates, InstallationAlignment,
             FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
             ReferencePointOffsets, DualAntennaConfiguration, UserData,
             IpDataportsConfiguration};
@@ -240,6 +240,7 @@ define_packets!(
     // Configuration Packets (180-203)
     PacketTimerPeriod => 180, Fixed(4),
     PacketsPeriod => 181, Variable,
+    BaudRates => 182, Fixed(17),
     InstallationAlignment => 185, Fixed(73),
     FilterOptions => 186, Fixed(17),
     OdometerConfiguration => 192, Fixed(8),

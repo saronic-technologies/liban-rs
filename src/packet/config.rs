@@ -167,6 +167,25 @@ pub struct PacketsPeriod {
     pub packet_periods: Vec<PacketPeriod>,
 }
 
+/// Baud rates packet (Packet ID 182, Length 17) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BaudRates {
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Primary RS232/RS422 baud rate; bit 31 selects RS422 protocol
+    pub primary_baud_rate: u32,
+    /// GPIO 1 and 2 baud rate
+    pub gpio_baud_rate: u32,
+    /// Auxiliary RS232/RS422 baud rate; bit 31 selects RS422 protocol
+    pub auxiliary_baud_rate: u32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
 /// Installation alignment packet (Packet ID 185, Length 73) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
