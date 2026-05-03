@@ -792,39 +792,6 @@ pub struct ExternalAirData {
     pub flags: AirDataFlags,
 }
 
-/// Raw DVL data packet (Packet ID 70, Length 60) - Read only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct RawDvlData {
-    pub unix_time_seconds: u32,
-    pub microseconds: u32,
-    pub status: DvlStatus,
-    /// Bottom velocity X in m/s
-    pub bottom_velocity_x: f32,
-    /// Bottom velocity Y in m/s
-    pub bottom_velocity_y: f32,
-    /// Bottom velocity Z in m/s
-    pub bottom_velocity_z: f32,
-    /// Bottom velocity standard deviation in m/s
-    pub bottom_velocity_std_dev: f32,
-    /// Water velocity X in m/s
-    pub water_velocity_x: f32,
-    /// Water velocity Y in m/s
-    pub water_velocity_y: f32,
-    /// Water velocity Z in m/s
-    pub water_velocity_z: f32,
-    /// Water velocity standard deviation in m/s
-    pub water_velocity_std_dev: f32,
-    /// Water velocity layer depth in meters
-    pub water_velocity_layer_depth: f32,
-    /// Depth in meters
-    pub depth: f32,
-    /// Altitude in meters
-    pub altitude: f32,
-    /// Temperature in degrees Celsius
-    pub temperature: f32,
-}
-
 /// GNSS manufacturer identifier
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GnssManufacturer {
@@ -877,16 +844,72 @@ impl From<(u8, u8)> for GnssReceiverModel {
     }
 }
 
-/// Gimbal state packet (Packet ID 72, Length 8) - Read/Write
+/// GNSS receiver information packet (Packet ID 69, Length 68) - Read only
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GimbalState {
-    /// Current gimbal angle in radians
-    pub angle: f32,
+pub struct GnssReceiverInformation {
+    #[br(map = |x: u8| GnssManufacturer::from(x))]
+    #[bw(map = |x: &GnssManufacturer| *x as u8)]
+    pub manufacturer: GnssManufacturer,
+    /// Raw receiver model byte (use `receiver_model()` to decode)
+    pub receiver_model_id: u8,
+    /// Serial number as ASCII string (24 bytes)
+    pub serial_number: [u8; 24],
+    pub firmware_version: u32,
+    pub hardware_version: u32,
     #[br(temp)]
-    #[bw(calc = [0u8; 4])]
-    _reserved: [u8; 4],
+    #[bw(calc = [0u8; 34])]
+    _reserved: [u8; 34],
+}
+
+impl GnssReceiverInformation {
+    /// Decode the receiver model from manufacturer + model ID
+    pub fn receiver_model(&self) -> GnssReceiverModel {
+        GnssReceiverModel::from((self.manufacturer as u8, self.receiver_model_id))
+    }
+
+    /// Get serial number as a string
+    pub fn serial_number_str(&self) -> &str {
+        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(self.serial_number.len());
+        match std::str::from_utf8(&self.serial_number[..len]) {
+            Ok(s) if !s.is_empty() => s,
+            _ => "unknown",
+        }
+    }
+}
+
+/// Raw DVL data packet (Packet ID 70, Length 60) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct RawDvlData {
+    pub unix_time_seconds: u32,
+    pub microseconds: u32,
+    pub status: DvlStatus,
+    /// Bottom velocity X in m/s
+    pub bottom_velocity_x: f32,
+    /// Bottom velocity Y in m/s
+    pub bottom_velocity_y: f32,
+    /// Bottom velocity Z in m/s
+    pub bottom_velocity_z: f32,
+    /// Bottom velocity standard deviation in m/s
+    pub bottom_velocity_std_dev: f32,
+    /// Water velocity X in m/s
+    pub water_velocity_x: f32,
+    /// Water velocity Y in m/s
+    pub water_velocity_y: f32,
+    /// Water velocity Z in m/s
+    pub water_velocity_z: f32,
+    /// Water velocity standard deviation in m/s
+    pub water_velocity_std_dev: f32,
+    /// Water velocity layer depth in meters
+    pub water_velocity_layer_depth: f32,
+    /// Depth in meters
+    pub depth: f32,
+    /// Altitude in meters
+    pub altitude: f32,
+    /// Temperature in degrees Celsius
+    pub temperature: f32,
 }
 
 /// North seeking initialisation status flags bitfield
@@ -935,39 +958,16 @@ pub struct NorthSeekingInitialisationStatus {
     _reserved2: [u8; 12],
 }
 
-/// GNSS receiver information packet (Packet ID 69, Length 68) - Read only
+/// Gimbal state packet (Packet ID 72, Length 8) - Read/Write
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GnssReceiverInformation {
-    #[br(map = |x: u8| GnssManufacturer::from(x))]
-    #[bw(map = |x: &GnssManufacturer| *x as u8)]
-    pub manufacturer: GnssManufacturer,
-    /// Raw receiver model byte (use `receiver_model()` to decode)
-    pub receiver_model_id: u8,
-    /// Serial number as ASCII string (24 bytes)
-    pub serial_number: [u8; 24],
-    pub firmware_version: u32,
-    pub hardware_version: u32,
+pub struct GimbalState {
+    /// Current gimbal angle in radians
+    pub angle: f32,
     #[br(temp)]
-    #[bw(calc = [0u8; 34])]
-    _reserved: [u8; 34],
-}
-
-impl GnssReceiverInformation {
-    /// Decode the receiver model from manufacturer + model ID
-    pub fn receiver_model(&self) -> GnssReceiverModel {
-        GnssReceiverModel::from((self.manufacturer as u8, self.receiver_model_id))
-    }
-
-    /// Get serial number as a string
-    pub fn serial_number_str(&self) -> &str {
-        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(self.serial_number.len());
-        match std::str::from_utf8(&self.serial_number[..len]) {
-            Ok(s) if !s.is_empty() => s,
-            _ => "unknown",
-        }
-    }
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
 }
 
 /// Sensor temperature packet (Packet ID 85, Length 32) - Read only
