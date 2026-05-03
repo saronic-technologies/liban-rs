@@ -440,6 +440,30 @@ pub struct IpDataport {
     pub mode: IpDataportMode,
 }
 
+/// Dual antenna configuration packet (Packet ID 196, Length 17) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DualAntennaConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Offset type
+    pub offset_type: OffsetType,
+    /// Automatic offset orientation; ignored when using manual offset
+    pub automatic_offset_orientation: AutomaticOffsetOrientation,
+    #[br(temp)]
+    #[bw(calc = 0u8)]
+    _reserved: u8,
+    /// Manual offset X in meters, measured from secondary to primary antenna in the body frame
+    pub manual_offset_x: f32,
+    /// Manual offset Y in meters, measured from secondary to primary antenna in the body frame
+    pub manual_offset_y: f32,
+    /// Manual offset Z in meters, measured from secondary to primary antenna in the body frame
+    pub manual_offset_z: f32,
+}
+
 /// User data packet (Packet ID 198, Length 64) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
@@ -461,24 +485,6 @@ mod serde_bytes_64 {
         let v = <Vec<u8>>::deserialize(deserializer)?;
         v.try_into().map_err(|_| serde::de::Error::custom("expected 64 bytes"))
     }
-}
-
-/// Dual antenna configuration packet (Packet ID 196, Length 17) - Read/Write
-#[binrw]
-#[brw(little)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DualAntennaConfiguration {
-    #[br(map = |x: u8| x != 0)]
-    #[bw(map = |x: &bool| *x as u8)]
-    pub permanent: bool,
-    pub offset_type: OffsetType,
-    pub automatic_offset_orientation: AutomaticOffsetOrientation,
-    #[br(temp)]
-    #[bw(calc = 0u8)]
-    _reserved: u8,
-    pub manual_offset_x: f32,
-    pub manual_offset_y: f32,
-    pub manual_offset_z: f32,
 }
 
 /// IP dataports configuration packet (Packet ID 202, Length 30) - Read/Write
