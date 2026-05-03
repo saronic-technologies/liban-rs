@@ -60,7 +60,7 @@ use PacketLength::*;
 // Import packet types from their respective modules
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
             RestoreFactorySettings, Reset, IpConfiguration};
-use state::{SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
+use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
             RawSensors, RawGnss, Satellites,
             GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
@@ -187,6 +187,7 @@ define_packets!(
     // State Packets (20-93)
     SystemState => 20, Fixed(100),
     UnixTime => 21, Fixed(8),
+    FormattedTime => 22, Fixed(14),
     Status => 23, Fixed(4),
     PositionStdDev => 24, Fixed(12),
     VelocityStdDev => 25, Fixed(12),

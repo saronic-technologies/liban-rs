@@ -216,6 +216,21 @@ pub struct UnixTime {
     pub microseconds: u32,
 }
 
+/// Formatted time packet (Packet ID 22, Length 14) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct FormattedTime {
+    pub microseconds: u32,
+    pub year: u16,
+    pub year_day: u16,
+    pub month: u8,
+    pub month_day: u8,
+    pub week_day: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub second: u8,
+}
+
 /// Status packet (Packet ID 23, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
