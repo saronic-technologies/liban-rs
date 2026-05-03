@@ -232,13 +232,17 @@ pub struct OdometerConfiguration {
     pub pulse_length: f32,
 }
 
-/// Set zero orientation alignment packet (Packet ID 193, Length 1) - Write only
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+/// Set zero orientation alignment packet (Packet ID 193, Length 5) - Write only
+#[binrw]
 #[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SetZeroOrientationAlignment {
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
+    #[br(temp)]
+    #[bw(calc = 0x9A4E8055u32)]
+    _verification: u32,
 }
 
 /// Reference point offsets packet (Packet ID 194, Length 49) - Read/Write
