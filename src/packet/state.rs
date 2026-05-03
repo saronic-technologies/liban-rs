@@ -1019,6 +1019,18 @@ pub struct SensorTemperature {
     pub pressure_sensor_temp: f32,
 }
 
+/// System temperature packet (Packet ID 86, Length 64) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SystemTemperature {
+    /// System temperature in degrees Celsius
+    pub temperature: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 60])]
+    _reserved: [u8; 60],
+}
+
 /// GNSS Position Velocity Time packet (Packet ID 92, Length 76) - Read only
 #[binrw]
 #[brw(little)]
