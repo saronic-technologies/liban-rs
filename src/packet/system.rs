@@ -1,7 +1,6 @@
-use binrw::{binrw, BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
-
 use super::PacketKind;
+use binrw::{binrw, BinRead, BinWrite};
+use serde::{Deserialize, Serialize};
 
 /// Acknowledge result codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -139,6 +138,37 @@ pub struct Reset {
     #[br(temp)]
     #[bw(calc = 0x21057A7Eu32)]
     _verification: u32,
+}
+
+/// Passthrough route for SerialPortPassthrough
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum PassthroughRoute {
+    /// GPIO 1 and 2
+    Gpio1And2 = 1,
+    /// Auxiliary port
+    Auxiliary = 2,
+}
+
+/// Serial port passthrough packet (Packet ID 10, Variable length) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SerialPortPassthrough {
+    /// Passthrough route
+    pub route: PassthroughRoute,
+    /// Passthrough data
+    #[br(parse_with = |reader, _endian, _args: ()| -> binrw::BinResult<Vec<u8>> {
+        std::iter::from_fn(|| match u8::read_le(reader) {
+            Ok(b) => Some(Ok(b)),
+            Err(Error::Io(e)) if e.kind() == ErrorKind::UnexpectedEof => None,
+            Err(e) => Some(Err(e)),
+        }).collect()
+    })]
+    #[bw(write_with = |data: &Vec<u8>, writer, _endian, _args: ()| -> binrw::BinResult<()> {
+        data.iter().try_for_each(|b| b.write_le(writer))
+    })]
+    pub data: Vec<u8>,
 }
 
 /// IP configuration packet (Packet ID 11, Length 30) - Read/Write

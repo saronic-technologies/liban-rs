@@ -61,7 +61,7 @@ use PacketLength::*;
 
 // Import packet types from their respective modules
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
-            RestoreFactorySettings, Reset, IpConfiguration};
+            RestoreFactorySettings, Reset, SerialPortPassthrough, IpConfiguration};
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
             RawSensors, RawGnss, Satellites,
@@ -187,6 +187,7 @@ define_packets!(
     DeviceInformation => 3, Fixed(24),
     RestoreFactorySettings => 4, Fixed(4),
     Reset => 5, Fixed(4),
+    SerialPortPassthrough => 10, Variable,
     IpConfiguration => 11, Fixed(30),
 
     // State Packets (20-93)
@@ -265,6 +266,7 @@ impl Packet {
         match self {
             Packet::Request(_) | Packet::BootMode(_) |
             Packet::RestoreFactorySettings(_) | Packet::Reset(_) |
+            Packet::SerialPortPassthrough(_) |
             Packet::IpConfiguration(_) |
             Packet::ExternalPositionVelocity(_) | Packet::ExternalPosition(_) |
             Packet::ExternalVelocity(_) | Packet::ExternalBodyVelocity(_) |
