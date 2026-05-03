@@ -72,6 +72,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             Wind, Heave, ExternalOdometer, ExternalAirData, GimbalState, Automotive,
             NorthSeekingInitialisationStatus, RawDvlData,
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
+            VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
 use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
             FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
@@ -232,6 +233,7 @@ define_packets!(
     ZeroAngularVelocity => 83, Fixed(8),
     SensorTemperature => 85, Fixed(32),
     SystemTemperature => 86, Fixed(64),
+    VesselMotion => 89, Fixed(48),
     GnssPositionVelocityTime => 92, Fixed(76),
     GnssOrientation => 93, Fixed(36),
 

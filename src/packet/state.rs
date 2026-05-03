@@ -1031,6 +1031,36 @@ pub struct SystemTemperature {
     _reserved: [u8; 60],
 }
 
+/// Vessel motion packet (Packet ID 89, Length 48) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct VesselMotion {
+    /// Surge at reference point 1 in meters
+    pub surge_point_1: f32,
+    /// Surge at reference point 2 in meters
+    pub surge_point_2: f32,
+    /// Surge at reference point 3 in meters
+    pub surge_point_3: f32,
+    /// Surge at reference point 4 in meters
+    pub surge_point_4: f32,
+    /// Sway at reference point 1 in meters
+    pub sway_point_1: f32,
+    /// Sway at reference point 2 in meters
+    pub sway_point_2: f32,
+    /// Sway at reference point 3 in meters
+    pub sway_point_3: f32,
+    /// Sway at reference point 4 in meters
+    pub sway_point_4: f32,
+    /// Heave at reference point 1 in meters
+    pub heave_point_1: f32,
+    /// Heave at reference point 2 in meters
+    pub heave_point_2: f32,
+    /// Heave at reference point 3 in meters
+    pub heave_point_3: f32,
+    /// Heave at reference point 4 in meters
+    pub heave_point_4: f32,
+}
+
 /// GNSS Position Velocity Time packet (Packet ID 92, Length 76) - Read only
 #[binrw]
 #[brw(little)]
