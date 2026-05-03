@@ -970,6 +970,26 @@ pub struct GimbalState {
     _reserved: [u8; 4],
 }
 
+/// Automotive packet (Packet ID 73, Length 24) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Automotive {
+    /// Virtual odometer distance in meters
+    pub virtual_odometer_distance: f32,
+    /// Slip angle in radians
+    pub slip_angle: f32,
+    /// Velocity X in m/s
+    pub velocity_x: f32,
+    /// Velocity Y in m/s
+    pub velocity_y: f32,
+    /// Distance standard deviation in meters
+    pub distance_std_dev: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
 /// Sensor temperature packet (Packet ID 85, Length 32) - Read only
 #[binrw]
 #[brw(little)]

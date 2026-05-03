@@ -69,7 +69,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
             ExternalBodyVelocity, ExternalHeading,
             RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
-            Wind, Heave, ExternalOdometer, ExternalAirData, GimbalState,
+            Wind, Heave, ExternalOdometer, ExternalAirData, GimbalState, Automotive,
             NorthSeekingInitialisationStatus, RawDvlData,
             GnssReceiverInformation, SensorTemperature,
             GnssPositionVelocityTime, GnssOrientation};
@@ -227,6 +227,7 @@ define_packets!(
     GnssReceiverInformation => 69, Fixed(68),
     NorthSeekingInitialisationStatus => 71, Fixed(28),
     GimbalState => 72, Fixed(8),
+    Automotive => 73, Fixed(24),
     RawDvlData => 70, Fixed(60),
     SensorTemperature => 85, Fixed(32),
     GnssPositionVelocityTime => 92, Fixed(76),
