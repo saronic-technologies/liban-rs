@@ -210,9 +210,12 @@ pub struct FilterOptions {
     #[br(temp)]
     #[bw(calc = 0u8)]
     _reserved2: u8,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub dual_antenna_disabled: bool,
     #[br(temp)]
-    #[bw(calc = [0u8; 8])]
-    _reserved3: [u8; 8],
+    #[bw(calc = [0u8; 7])]
+    _reserved3: [u8; 7],
 }
 
 /// Odometer configuration packet (Packet ID 192, Length 8) - Read/Write

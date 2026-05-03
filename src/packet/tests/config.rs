@@ -108,6 +108,7 @@ mod tests {
             velocity_heading_enabled: true,
             reversing_detection_enabled: false,
             motion_analysis_enabled: true,
+            dual_antenna_disabled: false,
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
@@ -211,6 +212,7 @@ mod tests {
             velocity_heading_enabled: true,
             reversing_detection_enabled: false,
             motion_analysis_enabled: true,
+            dual_antenna_disabled: false,
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
