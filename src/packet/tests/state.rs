@@ -3,7 +3,7 @@ mod tests {
     use crate::packet::state::{
         SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
         EulerOrientationStdDev, RawSensors, SensorTemperature,
-        GnssPositionVelocityTime, GnssOrientation,
+        GnssPositionVelocityTime, GnssOrientation, FormattedTime,
         SystemStatus, FilterStatus, GnssPvtStatus, GnssOrientationStatus,
     };
     use binrw::{BinRead, BinWrite};
@@ -324,5 +324,67 @@ mod tests {
         let mut cursor = std::io::Cursor::new(&bytes);
         let deserialized = VelocityStdDev::read_le(&mut cursor).expect("Failed to deserialize");
         assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn test_formatted_time() {
+        let cases = [
+            // (year, month, day, hour, minute, second), (doy, dow), expected)
+            // values generated from python reference script
+            ((1900, 1, 1, 0, 0, 0), (0, 1), -2208988800),
+            ((1969, 12, 31, 23, 59, 59), (364, 3), -1),
+            ((1970, 1, 1, 0, 0, 0), (0, 4), 0),
+            ((1970, 1, 1, 0, 0, 1), (0, 4), 1),
+            ((1970, 1, 1, 1, 0, 0), (0, 4), 3600),
+            ((1970, 1, 2, 0, 0, 0), (1, 5), 86400),
+            ((2000, 1, 1, 0, 0, 0), (0, 6), 946684800),
+            ((2000, 2, 29, 0, 0, 0), (59, 2), 951782400),
+            ((2001, 9, 9, 1, 46, 40), (251, 0), 1000000000),
+            ((2009, 2, 13, 23, 31, 30), (43, 5), 1234567890),
+            ((2012, 2, 29, 12, 0, 0), (59, 3), 1330516800),
+            ((2021, 1, 1, 0, 0, 0), (0, 5), 1609459200),
+            ((2038, 1, 19, 3, 14, 7), (18, 2), 2147483647),
+            ((2038, 1, 19, 3, 14, 8), (18, 2), 2147483648),
+            ((2100, 2, 28, 0, 0, 0), (58, 0), 4107456000),
+            ((2100, 3, 1, 0, 0, 0), (59, 1), 4107542400),
+        ];
+        for ((year, month, month_day, hour, minute, second), (year_day, week_day), expected_ts) in cases {
+            let packet = FormattedTime {
+                microseconds: 0,
+                year,
+                year_day,
+                month,
+                month_day,
+                week_day,
+                hour,
+                minute,
+                second,
+            };
+            assert_eq!(packet.unix_time_seconds(), Some(expected_ts));
+        }
+    }
+
+    #[test]
+    fn test_formatted_time_mismatch() {
+        let cases = [
+            // (year, month, day, hour, minute, second), (doy, dow))
+            // examples taken from other test, adjusted to be wrong
+            ((1970, 1, 1, 0, 0, 0), (0, 5)), // bad dow
+            ((1970, 1, 1, 0, 0, 1), (1, 4)), // bad doy
+        ];
+        for ((year, month, month_day, hour, minute, second), (year_day, week_day)) in cases {
+            let packet = FormattedTime {
+                microseconds: 0,
+                year,
+                year_day,
+                month,
+                month_day,
+                week_day,
+                hour,
+                minute,
+                second,
+            };
+            assert!(packet.unix_time_seconds().is_none());
+        }
     }
 }
