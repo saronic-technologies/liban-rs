@@ -548,6 +548,22 @@ mod serde_bytes_64 {
     }
 }
 
+/// GPIO input configuration packet (Packet ID 199, Length 65) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GpioInputConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Gimbal radians per encoder tick
+    pub gimbal_radians_per_encoder_tick: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 60])]
+    _reserved: [u8; 60],
+}
+
 /// IP dataports configuration packet (Packet ID 202, Length 30) - Read/Write
 #[binrw]
 #[brw(little)]
