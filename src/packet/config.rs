@@ -110,6 +110,13 @@ pub enum PortOutputRate {
     Rate8Hz = 10,
 }
 
+/// CAN protocol selection for CanConfiguration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum CanProtocol {
+    CanOpen = 0,
+}
+
 // ===========================================================================
 // Serde helpers for Duration fields
 // ===========================================================================
@@ -573,6 +580,28 @@ pub struct IpDataportsConfiguration {
     #[bw(calc = 0u16)]
     _reserved: u16,
     pub dataports: [IpDataport; 4],
+}
+
+/// CAN configuration packet (Packet ID 203, Length 11) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CanConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// CAN interface enabled
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub enabled: bool,
+    /// Baud rate
+    pub baud_rate: u32,
+    /// CAN protocol
+    pub protocol: CanProtocol,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
 }
 
 #[cfg(test)]

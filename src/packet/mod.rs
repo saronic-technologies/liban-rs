@@ -76,8 +76,8 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
-use config::{BaudRates, DualAntennaConfiguration, FilterOptions, GnssConfiguration,
-            GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
+use config::{BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
+            GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
             InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
             PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
             SetZeroOrientationAlignment, UserData};
@@ -256,6 +256,7 @@ define_packets!(
     UserData => 198, Fixed(64),
     GpioInputConfiguration => 199, Fixed(65),
     IpDataportsConfiguration => 202, Fixed(30),
+    CanConfiguration => 203, Fixed(11),
 );
 
 impl Packet {
@@ -275,7 +276,7 @@ impl Packet {
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
             Packet::ReferencePointOffsets(_) | Packet::GpioOutputConfiguration(_) |
             Packet::DualAntennaConfiguration(_) | Packet::GnssConfiguration(_) |
-            Packet::GpioInputConfiguration(_) |
+            Packet::GpioInputConfiguration(_) | Packet::CanConfiguration(_) |
             Packet::UserData(_) |
             Packet::IpDataportsConfiguration(_) => {
                 let packet_id = PacketId::new(self.packet_id());
