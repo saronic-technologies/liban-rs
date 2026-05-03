@@ -1,12 +1,15 @@
-use crate::parser::AnppParser;
-use crate::packet::Packet;
-
-use std::io::Read;
+use crate::{packet::Packet, parser::AnppParser};
+use std::{
+    io::{self, ErrorKind, Read},
+    net::{SocketAddr, UdpSocket},
+    time::Duration,
+};
 
 // NOTE: May make this tunable. The std reader is going to be on user
 // space linux and in many cases users will have the memory.
 // 8K is the default size of the BufReader in rust.
 const BUFFER_SIZE: usize = 1024 * 8;
+const UDP_BUFFER_SIZE: usize = 65536;
 
 /// Read ANPP data via a BuffReader and Iterator.
 ///
@@ -95,11 +98,80 @@ impl<R: Read> Iterator for AnppReader<R> {
     }
 }
 
+/// Read ANPP data from UDP datagrams, presenting them as a byte stream.
+///
+/// Each UDP datagram is buffered internally so that [`AnppReader`] can consume
+/// it in chunks. Returns EOF (zero bytes) when the read timeout elapses with
+/// no data, allowing the caller to detect connection loss.
+pub struct UdpReader {
+    /// The bound UDP socket with a configured read timeout.
+    socket: UdpSocket,
+    /// Scratch buffer holding the most recently received datagram.
+    buf: Vec<u8>,
+    /// Read cursor into `buf`.
+    pos: usize,
+    /// Number of valid bytes in `buf` from the last recv.
+    used: usize,
+}
+
+impl UdpReader {
+    /// Returns the local address the socket is bound to.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.socket.local_addr()
+    }
+
+    /// Bind to `0.0.0.0:{port}` and set the read timeout.
+    ///
+    /// Returns `Ok(0)` on each [`Read::read`] call once the timeout elapses
+    /// with no data received, signaling EOF to [`AnppReader`].
+    pub fn try_new(port: u16, timeout: Duration) -> io::Result<Self> {
+        let socket = UdpSocket::bind(format!("0.0.0.0:{port}"))?;
+        socket.set_read_timeout(Some(timeout))?;
+        Ok(Self {
+            socket,
+            buf: vec![0u8; UDP_BUFFER_SIZE],
+            pos: 0,
+            used: 0,
+        })
+    }
+}
+
+impl Read for UdpReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.pos >= self.used {
+            loop {
+                match self.socket.recv(&mut self.buf) {
+                    // Zero-length datagrams are legal but carry no ANPP data; skip them.
+                    Ok(0) => continue,
+                    Ok(n) => {
+                        self.used = n;
+                        self.pos = 0;
+                        break;
+                    }
+                    Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {
+                        return Ok(0);
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+        let to_copy = (self.used - self.pos).min(buf.len());
+        buf[..to_copy].copy_from_slice(&self.buf[self.pos..self.pos + to_copy]);
+        self.pos += to_copy;
+        Ok(to_copy)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::packet::system::Request;
-    use std::io::{Read, Cursor};
+    use super::{AnppReader, UdpReader};
+    use crate::packet::{PacketKind, system::Request};
+    use binrw::BinWrite;
+    use std::{
+        io::{Cursor, Read},
+        net::UdpSocket,
+        time::Duration,
+    };
 
     #[test]
     fn test_random_data_consumption() {
@@ -215,14 +287,11 @@ mod tests {
 
     #[test]
     fn test_anpp_reader_with_known_packets() {
-        use binrw::BinWrite;
-        use std::io::Cursor as WriteCursor;
-
         // Create some known ANPP packets
-        let request_packet = Request { requested_packet: crate::packet::PacketKind::SystemState };
+        let request_packet = Request { requested_packet: PacketKind::SystemState };
 
         // Serialize the packet payload
-        let mut cursor = WriteCursor::new(Vec::new());
+        let mut cursor = Cursor::new(Vec::new());
         request_packet.write_le(&mut cursor).unwrap();
         let _payload = cursor.into_inner();
 
@@ -280,5 +349,63 @@ mod tests {
 
         // Should handle large data without panicking
         println!("Buffer boundary test: {} packets, {} errors", packet_count, error_count);
+    }
+
+    #[test]
+    fn test_udp_timeout_returns_eof() {
+        let mut reader = UdpReader::try_new(0, Duration::from_millis(100)).unwrap();
+        let mut buf = [0u8; 64];
+        let n = reader.read(&mut buf).unwrap();
+        assert_eq!(n, 0, "UdpReader should return EOF on timeout");
+    }
+
+    #[test]
+    fn test_udp_empty_datagram_skipped() {
+        let mut reader = UdpReader::try_new(0, Duration::from_millis(200)).unwrap();
+        let port = reader.local_addr().unwrap().port();
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+
+        sender.send_to(&[], format!("127.0.0.1:{port}")).unwrap();
+        let data: Vec<u8> = (0..64).map(|i| i as u8).collect();
+        sender.send_to(&data, format!("127.0.0.1:{port}")).unwrap();
+
+        let mut received = Vec::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            let n = reader.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            received.extend_from_slice(&buf[..n]);
+        }
+
+        assert_eq!(received, data);
+    }
+
+    #[test]
+    fn test_udp_random_data_consumption() {
+        let mut reader = UdpReader::try_new(0, Duration::from_millis(200)).unwrap();
+        let port = reader.local_addr().unwrap().port();
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+
+        let datagram_sizes = [100usize, 1024, 8192, 16384];
+        let mut all_sent: Vec<u8> = Vec::new();
+        for &size in &datagram_sizes {
+            let data: Vec<u8> = (0..size).map(|i| (i % 256) as u8).collect();
+            sender.send_to(&data, format!("127.0.0.1:{port}")).unwrap();
+            all_sent.extend_from_slice(&data);
+        }
+
+        let mut received = Vec::new();
+        let mut buf = [0u8; 8192];
+        loop {
+            let n = reader.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            received.extend_from_slice(&buf[..n]);
+        }
+
+        assert_eq!(received, all_sent);
     }
 }
