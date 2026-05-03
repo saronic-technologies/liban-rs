@@ -32,10 +32,16 @@ pub use packet::state::{
     ExternalBodyVelocity, ExternalHeading,
     RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
     Heave, RawDvlData, DvlStatus,
-    GnssReceiverInformation, GnssManufacturer, GnssReceiverModel,
+    GnssReceiverInformation,
     SensorTemperature,
     GnssPositionVelocityTime, GnssOrientation,
     GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
+};
+
+pub use packet::receiver::{
+    AdvancedNavigationModel, GenericReceiverData, GnssManufacturer, GnssReceiverData,
+    OmnistarEngineMode, ReceiverType, RtkLicenseAccuracy, TrimbleBd992ReceiverData,
+    TrimbleModel, UBloxModel,
 };
 
 pub use packet::config::{

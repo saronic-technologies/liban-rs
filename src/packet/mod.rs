@@ -6,6 +6,7 @@ use std::io::{Seek, Write};
 
 pub mod config;
 pub mod gpio;
+pub mod receiver;
 pub mod satellite;
 pub mod state;
 pub mod system;

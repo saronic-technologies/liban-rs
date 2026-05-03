@@ -1,4 +1,7 @@
-use super::satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem};
+use super::{
+    receiver::{GnssManufacturer, GnssReceiverData},
+    satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem},
+};
 use binrw::{binrw, BinRead, BinWrite};
 use serde::{Deserialize, Serialize};
 
@@ -836,91 +839,18 @@ pub struct ExternalAirData {
     pub flags: AirDataFlags,
 }
 
-/// GNSS manufacturer identifier
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GnssManufacturer {
-    #[default]
-    Unknown = 0,
-    Trimble = 1,
-    UBlox = 2,
-    AdvancedNavigation = 3,
-}
-
-impl From<u8> for GnssManufacturer {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::Unknown,
-            1 => Self::Trimble,
-            2 => Self::UBlox,
-            3 => Self::AdvancedNavigation,
-            _ => Self::Unknown,
-        }
-    }
-}
-
-/// GNSS receiver model (decoded from manufacturer + model ID)
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GnssReceiverModel {
-    #[default]
-    Unknown,
-    /// Trimble MB-Two
-    TrimbleMbTwo,
-    /// Trimble BD992
-    TrimbleBd992,
-    /// u-blox NEO-F9P
-    UBloxNeoF9P,
-    /// Advanced Navigation Aries
-    Aries,
-    /// Advanced Navigation Aries GC2
-    AriesGc2,
-}
-
-impl From<(u8, u8)> for GnssReceiverModel {
-    fn from((manufacturer, model): (u8, u8)) -> Self {
-        match (manufacturer, model) {
-            (1, 5) => Self::TrimbleMbTwo,
-            (1, 7) => Self::TrimbleBd992,
-            (2, 5) => Self::UBloxNeoF9P,
-            (3, 1) => Self::Aries,
-            (3, 2) => Self::AriesGc2,
-            _ => Self::Unknown,
-        }
-    }
-}
-
-/// GNSS receiver information packet (Packet ID 69, Length 68) - Read only
+/// GNSS receiver information packet (Packet ID 69, Length 48 or 68) - Read only
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GnssReceiverInformation {
-    #[br(map = |x: u8| GnssManufacturer::from(x))]
-    #[bw(map = |x: &GnssManufacturer| *x as u8)]
+    /// Manufacturer and receiver model (2-byte header)
+    #[br(parse_with = GnssManufacturer::parse)]
+    #[bw(write_with = GnssManufacturer::write_to)]
     pub manufacturer: GnssManufacturer,
-    /// Raw receiver model byte (use `receiver_model()` to decode)
-    pub receiver_model_id: u8,
-    /// Serial number as ASCII string (24 bytes)
-    pub serial_number: [u8; 24],
-    pub firmware_version: u32,
-    pub hardware_version: u32,
-    #[br(temp)]
-    #[bw(calc = [0u8; 34])]
-    _reserved: [u8; 34],
-}
-
-impl GnssReceiverInformation {
-    /// Decode the receiver model from manufacturer + model ID
-    pub fn receiver_model(&self) -> GnssReceiverModel {
-        GnssReceiverModel::from((self.manufacturer as u8, self.receiver_model_id))
-    }
-
-    /// Get serial number as a string
-    pub fn serial_number_str(&self) -> &str {
-        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(self.serial_number.len());
-        match std::str::from_utf8(&self.serial_number[..len]) {
-            Ok(s) if !s.is_empty() => s,
-            _ => "unknown",
-        }
-    }
+    /// Receiver-specific payload, layout determined by manufacturer and model
+    #[br(args(manufacturer.receiver_type()))]
+    pub data: GnssReceiverData,
 }
 
 /// Raw DVL data packet (Packet ID 70, Length 60) - Read only
