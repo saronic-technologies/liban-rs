@@ -1,3 +1,4 @@
+use super::satellite::{EphemerisData, RawSatelliteEntry, SatelliteSystem};
 use binrw::{binrw, BinRead, BinWrite};
 use serde::{Deserialize, Serialize};
 
@@ -715,6 +716,49 @@ pub struct Heave {
     pub heave_point_2: f32,
     pub heave_point_3: f32,
     pub heave_point_4: f32,
+}
+
+/// Raw satellite data packet (Packet ID 60, Variable length) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawSatelliteData {
+    /// Unix timestamp (seconds)
+    pub unix_time: u32,
+    /// Nanoseconds part of timestamp
+    pub nanoseconds: u32,
+    /// Receiver clock offset (nanoseconds)
+    pub receiver_clock_offset: i32,
+    /// Receiver number
+    pub receiver_number: u8,
+    /// Packet number (range 1 to Total)
+    pub packet_number: u8,
+    /// Total packets
+    pub total_packets: u8,
+    #[br(temp)]
+    #[bw(calc = satellites.len() as u8)]
+    num_satellites: u8,
+    /// Per-satellite measurements
+    #[br(count = num_satellites)]
+    pub satellites: Vec<RawSatelliteEntry>,
+}
+
+/// Raw satellite ephemeris packet (Packet ID 61, Length 132 GPS / 94 GLONASS) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawSatelliteEphemeris {
+    /// Unix timestamp (seconds)
+    pub unix_time: u32,
+    /// Satellite system
+    #[br(map = |x: u8| SatelliteSystem::from(x))]
+    #[bw(map = |x: &SatelliteSystem| *x as u8)]
+    pub satellite_system: SatelliteSystem,
+    /// Satellite number (PRN)
+    pub prn: u8,
+    /// System-specific ephemeris data
+    #[br(args(satellite_system))]
+    pub data: EphemerisData,
 }
 
 /// DVL status flags bitfield

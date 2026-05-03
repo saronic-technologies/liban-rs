@@ -6,6 +6,7 @@ use std::io::{Seek, Write};
 
 pub mod config;
 pub mod gpio;
+pub mod satellite;
 pub mod state;
 pub mod system;
 
@@ -84,7 +85,8 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
             ExternalBodyVelocity, ExternalHeading,
             RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
-            Wind, Heave, ExternalOdometer, ExternalAirData, GimbalState, Automotive,
+            Wind, Heave, RawSatelliteData, RawSatelliteEphemeris,
+            ExternalOdometer, ExternalAirData, GimbalState, Automotive,
             NorthSeekingInitialisationStatus, RawDvlData,
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
@@ -241,6 +243,8 @@ define_packets!(
     RtcmCorrections => 55, Variable,
     Wind => 57, Fixed(12),
     Heave => 58, Fixed(16),
+    RawSatelliteData => 60, Variable,
+    RawSatelliteEphemeris => 61, OneOf(&[94, 132]),
     ExternalOdometer => 67, Fixed(13),
     ExternalAirData => 68, Fixed(25),
     GnssReceiverInformation => 69, Fixed(68),
