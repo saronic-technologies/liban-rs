@@ -73,7 +73,8 @@ where
 
 // Import packet types from their respective modules
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
-            RestoreFactorySettings, Reset, SerialPortPassthrough, IpConfiguration};
+            RestoreFactorySettings, Reset, SerialPortPassthrough, IpConfiguration,
+            SubcomponentInformation};
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
             RawSensors, RawGnss, Satellites,
@@ -201,6 +202,7 @@ define_packets!(
     Reset => 5, Fixed(4),
     SerialPortPassthrough => 10, Variable,
     IpConfiguration => 11, Fixed(30),
+    SubcomponentInformation => 14, Variable,
 
     // State Packets (20-93)
     SystemState => 20, Fixed(100),
