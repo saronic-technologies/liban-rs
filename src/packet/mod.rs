@@ -76,10 +76,10 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
-use config::{BaudRates, DualAntennaConfiguration, FilterOptions, GpioConfiguration,
-            GpioOutputConfiguration, InstallationAlignment, IpDataportsConfiguration,
-            OdometerConfiguration, PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
-            SetZeroOrientationAlignment, UserData};
+use config::{BaudRates, DualAntennaConfiguration, FilterOptions, GnssConfiguration,
+            GpioConfiguration, GpioOutputConfiguration, InstallationAlignment,
+            IpDataportsConfiguration, OdometerConfiguration, PacketTimerPeriod, PacketsPeriod,
+            ReferencePointOffsets, SetZeroOrientationAlignment, UserData};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -251,6 +251,7 @@ define_packets!(
     ReferencePointOffsets => 194, Fixed(49),
     GpioOutputConfiguration => 195, Fixed(183),
     DualAntennaConfiguration => 196, Fixed(17),
+    GnssConfiguration => 197, Fixed(85),
     UserData => 198, Fixed(64),
     IpDataportsConfiguration => 202, Fixed(30),
 );
@@ -271,7 +272,7 @@ impl Packet {
             Packet::GpioConfiguration(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
             Packet::ReferencePointOffsets(_) | Packet::GpioOutputConfiguration(_) |
-            Packet::DualAntennaConfiguration(_) |
+            Packet::DualAntennaConfiguration(_) | Packet::GnssConfiguration(_) |
             Packet::UserData(_) |
             Packet::IpDataportsConfiguration(_) => {
                 let packet_id = PacketId::new(self.packet_id());

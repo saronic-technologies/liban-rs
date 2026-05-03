@@ -464,6 +464,67 @@ pub struct DualAntennaConfiguration {
     pub manual_offset_z: f32,
 }
 
+/// GNSS frequency enable bitfield for GnssConfiguration
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct GnssFrequencies(u64);
+
+impl GnssFrequencies {
+    pub fn raw(&self) -> u64 { self.0 }
+    pub fn gps_l1ca(&self) -> bool { self.0 & (1 << 0) != 0 }
+    pub fn gps_l1c(&self) -> bool { self.0 & (1 << 1) != 0 }
+    pub fn gps_l1p(&self) -> bool { self.0 & (1 << 2) != 0 }
+    pub fn gps_l2c(&self) -> bool { self.0 & (1 << 3) != 0 }
+    pub fn gps_l2p(&self) -> bool { self.0 & (1 << 4) != 0 }
+    pub fn gps_l2m(&self) -> bool { self.0 & (1 << 5) != 0 }
+    pub fn gps_l5(&self) -> bool { self.0 & (1 << 6) != 0 }
+    pub fn glonass_g1ca(&self) -> bool { self.0 & (1 << 7) != 0 }
+    pub fn glonass_g1p(&self) -> bool { self.0 & (1 << 8) != 0 }
+    pub fn glonass_l1oc(&self) -> bool { self.0 & (1 << 9) != 0 }
+    pub fn glonass_l1sc(&self) -> bool { self.0 & (1 << 10) != 0 }
+    pub fn glonass_g2ca(&self) -> bool { self.0 & (1 << 11) != 0 }
+    pub fn glonass_g2p(&self) -> bool { self.0 & (1 << 12) != 0 }
+    pub fn glonass_l2oc(&self) -> bool { self.0 & (1 << 13) != 0 }
+    pub fn glonass_l2sc(&self) -> bool { self.0 & (1 << 14) != 0 }
+    pub fn glonass_l3oc(&self) -> bool { self.0 & (1 << 15) != 0 }
+    pub fn glonass_l3sc(&self) -> bool { self.0 & (1 << 16) != 0 }
+    pub fn beidou_b1(&self) -> bool { self.0 & (1 << 17) != 0 }
+    pub fn beidou_b2(&self) -> bool { self.0 & (1 << 18) != 0 }
+    pub fn beidou_b3(&self) -> bool { self.0 & (1 << 19) != 0 }
+    pub fn galileo_e1(&self) -> bool { self.0 & (1 << 20) != 0 }
+    pub fn galileo_e5a(&self) -> bool { self.0 & (1 << 21) != 0 }
+    pub fn galileo_e5b(&self) -> bool { self.0 & (1 << 22) != 0 }
+    pub fn galileo_e5ab(&self) -> bool { self.0 & (1 << 23) != 0 }
+    pub fn galileo_e6(&self) -> bool { self.0 & (1 << 24) != 0 }
+    pub fn qzss_l1ca(&self) -> bool { self.0 & (1 << 25) != 0 }
+    pub fn qzss_l1saif(&self) -> bool { self.0 & (1 << 26) != 0 }
+    pub fn qzss_l1c(&self) -> bool { self.0 & (1 << 27) != 0 }
+    pub fn qzss_l2c(&self) -> bool { self.0 & (1 << 28) != 0 }
+    pub fn qzss_l5(&self) -> bool { self.0 & (1 << 29) != 0 }
+    pub fn qzss_lex(&self) -> bool { self.0 & (1 << 30) != 0 }
+    pub fn sbas_l1ca(&self) -> bool { self.0 & (1 << 31) != 0 }
+    pub fn sbas_l5(&self) -> bool { self.0 & (1 << 32) != 0 }
+    pub fn navic_l5(&self) -> bool { self.0 & (1 << 33) != 0 }
+    pub fn navic_s1(&self) -> bool { self.0 & (1 << 34) != 0 }
+    pub fn beidou_b2a(&self) -> bool { self.0 & (1 << 35) != 0 }
+}
+
+/// GNSS configuration packet (Packet ID 197, Length 85) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GnssConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// GNSS frequencies bitfield; each bit enables tracking of a specific constellation frequency
+    pub gnss_frequencies: GnssFrequencies,
+    #[br(temp)]
+    #[bw(calc = [0u8; 76])]
+    _reserved: [u8; 76],
+}
+
 /// User data packet (Packet ID 198, Length 64) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
