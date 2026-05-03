@@ -668,6 +668,16 @@ pub struct ExternalTime {
     pub microseconds: u32,
 }
 
+/// External depth packet (Packet ID 53, Length 8) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExternalDepth {
+    /// Depth below mean sea level in meters
+    pub depth: f32,
+    /// Depth standard deviation in meters
+    pub depth_std_dev: f32,
+}
+
 /// Geoid height packet (Packet ID 54, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
