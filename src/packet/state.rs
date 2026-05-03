@@ -695,6 +695,18 @@ pub struct RtcmCorrections {
     pub data: Vec<u8>,
 }
 
+/// Wind packet (Packet ID 57, Length 12) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct Wind {
+    /// Wind velocity north in m/s
+    pub velocity_north: f32,
+    /// Wind velocity east in m/s
+    pub velocity_east: f32,
+    /// Wind velocity standard deviation in m/s
+    pub velocity_std_dev: f32,
+}
+
 /// Heave packet (Packet ID 58, Length 16) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
