@@ -1,4 +1,4 @@
-use super::satellite::{EphemerisData, RawSatelliteEntry, SatelliteSystem};
+use super::satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem};
 use binrw::{binrw, BinRead, BinWrite};
 use serde::{Deserialize, Serialize};
 
@@ -1044,6 +1044,19 @@ pub struct ZeroAngularVelocity {
     #[br(temp)]
     #[bw(calc = [0u8; 4])]
     _reserved: [u8; 4],
+}
+
+/// Extended satellites packet (Packet ID 84, Variable length) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExtendedSatellites {
+    /// Total number of extended satellites packets
+    pub total_packets: u8,
+    /// Packet number (range 1 to Total)
+    pub packet_number: u8,
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
+    pub satellites: Vec<ExtendedSatelliteEntry>,
 }
 
 /// Sensor temperature packet (Packet ID 85, Length 32) - Read only
