@@ -1,5 +1,5 @@
 use binrw::{binrw, BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // ===========================================================================
 // Enums and Status Types
@@ -579,7 +579,9 @@ pub struct ExternalVelocity {
     pub velocity_down_std_dev: f32,
 }
 
-/// External body velocity packet (Packet ID 47, Length 16) - Write only
+/// External body velocity packet (Packet ID 47, Length 16 or 24) - Write only
+///
+/// The 16-byte variant represents isotropic velocity error: all three standard deviations are equal.
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct ExternalBodyVelocity {
@@ -589,8 +591,18 @@ pub struct ExternalBodyVelocity {
     pub velocity_y: f32,
     /// Velocity Z in m/s
     pub velocity_z: f32,
-    /// Standard deviation in m/s
-    pub standard_deviation: f32,
+    /// Velocity X standard deviation in m/s
+    pub velocity_x_std_dev: f32,
+    /// Velocity Y standard deviation in m/s
+    #[br(parse_with = |reader, endian, (fallback,): (f32,)| {
+        f32::read_options(reader, endian, ()).or(Ok(fallback))
+    }, args(velocity_x_std_dev))]
+    pub velocity_y_std_dev: f32,
+    /// Velocity Z standard deviation in m/s
+    #[br(parse_with = |reader, endian, (fallback,): (f32,)| {
+        f32::read_options(reader, endian, ()).or(Ok(fallback))
+    }, args(velocity_x_std_dev))]
+    pub velocity_z_std_dev: f32,
 }
 
 /// External heading packet (Packet ID 48, Length 8) - Write only
