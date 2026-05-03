@@ -164,6 +164,7 @@ pub struct PacketPeriod {
     #[br(map = |x: u8| PacketKind::from(x))]
     #[bw(map = |x: &PacketKind| x.packet_id())]
     pub packet_type: PacketKind,
+    /// Period in units of the packet timer period
     #[br(map = |x: u32| Duration::from_millis(x as u64))]
     #[bw(map = |x: &Duration| x.as_millis() as u32)]
     #[serde(with = "duration_as_millis")]
@@ -200,25 +201,16 @@ pub struct PacketTimerPeriod {
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct PacketsPeriod {
+    /// Whether the configuration is saved to non-volatile memory
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
+    /// When true, deletes any existing packet rates; when false, existing packet rates remain
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub clear_existing: bool,
-    #[br(parse_with = |reader, _endian, _args: ()| -> binrw::BinResult<Vec<PacketPeriod>> {
-        let mut entries = Vec::new();
-        while let Ok(entry) = PacketPeriod::read_le(reader) {
-            entries.push(entry);
-        }
-        Ok(entries)
-    })]
-    #[bw(write_with = |entries: &Vec<PacketPeriod>, writer, _endian, _args: ()| -> binrw::BinResult<()> {
-        for entry in entries {
-            entry.write_le(writer)?;
-        }
-        Ok(())
-    })]
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
     pub packet_periods: Vec<PacketPeriod>,
 }
 

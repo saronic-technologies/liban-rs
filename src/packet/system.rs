@@ -151,23 +151,14 @@ pub enum PassthroughRoute {
 }
 
 /// Serial port passthrough packet (Packet ID 10, Variable length) - Read/Write
-#[binrw]
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SerialPortPassthrough {
     /// Passthrough route
     pub route: PassthroughRoute,
     /// Passthrough data
-    #[br(parse_with = |reader, _endian, _args: ()| -> binrw::BinResult<Vec<u8>> {
-        std::iter::from_fn(|| match u8::read_le(reader) {
-            Ok(b) => Some(Ok(b)),
-            Err(Error::Io(e)) if e.kind() == ErrorKind::UnexpectedEof => None,
-            Err(e) => Some(Err(e)),
-        }).collect()
-    })]
-    #[bw(write_with = |data: &Vec<u8>, writer, _endian, _args: ()| -> binrw::BinResult<()> {
-        data.iter().try_for_each(|b| b.write_le(writer))
-    })]
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
     pub data: Vec<u8>,
 }
 

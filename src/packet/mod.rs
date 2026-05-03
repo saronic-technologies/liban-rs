@@ -1,7 +1,8 @@
 
 use crate::{Result, error::AnError};
-use binrw::{BinRead, BinWrite};
+use binrw::{BinRead, BinResult, BinWrite, Endian};
 use serde::{Deserialize, Serialize};
+use std::io::{Seek, Write};
 
 pub mod config;
 pub mod gpio;
@@ -58,6 +59,17 @@ pub enum PacketLength {
 }
 
 use PacketLength::*;
+
+/// Writes each element of a `Vec<T>` in sequence, for use with `#[bw(write_with = ...)]`.
+// binrw's write_with macro passes &Vec<T> by field type, so &[T] is not accepted here
+#[allow(clippy::ptr_arg)]
+pub(crate) fn write_vec<W, T>(data: &Vec<T>, writer: &mut W, endian: Endian, _args: ()) -> BinResult<()>
+where
+    W: Write + Seek,
+    T: for<'a> BinWrite<Args<'a> = ()>,
+{
+    data.iter().try_for_each(|item| item.write_options(writer, endian, ()))
+}
 
 // Import packet types from their respective modules
 use system::{Acknowledge, Request, BootMode, DeviceInformation,
