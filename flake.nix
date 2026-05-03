@@ -45,6 +45,7 @@
           ] ++ lib.optionals stdenv.isLinux [
             valgrind
           ];
+          RUST_LOG = "info";
         };
       }
     );
