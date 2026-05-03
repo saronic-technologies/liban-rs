@@ -1,4 +1,4 @@
-use binrw::{binrw, BinRead, BinWrite};
+use binrw::{BinRead, BinWrite, binrw};
 use serde::{Deserialize, Serialize};
 
 /// Satellite navigation system

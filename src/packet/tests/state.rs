@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::packet::state::{
-        SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
-        EulerOrientationStdDev, RawSensors, SensorTemperature,
-        GnssPositionVelocityTime, GnssOrientation,
-        SystemStatus, FilterStatus, GnssPvtStatus, GnssOrientationStatus,
+        EulerOrientationStdDev, FilterStatus, GnssOrientation, GnssOrientationStatus,
+        GnssPositionVelocityTime, GnssPvtStatus, PositionStdDev, RawSensors, SensorTemperature,
+        Status, SystemState, SystemStatus, UnixTime, VelocityStdDev,
     };
     use binrw::{BinRead, BinWrite};
 

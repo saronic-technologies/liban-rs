@@ -1,5 +1,5 @@
 use super::PacketKind;
-use binrw::{binrw, BinRead, BinWrite};
+use binrw::{BinRead, BinWrite, binrw};
 use serde::{Deserialize, Serialize};
 
 /// Acknowledge result codes

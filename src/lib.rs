@@ -10,43 +10,38 @@ pub mod protocol;
 pub mod reader;
 
 pub use error::{AnError, Result};
-pub use packet::{Packet, PacketKind, HasPacketId};
-pub use parser::{AnppParser, parse_datagram, DatagramError};
+pub use packet::{HasPacketId, Packet, PacketKind};
+pub use parser::{AnppParser, DatagramError, parse_datagram};
 
 // Re-export all public types from packet modules
 pub use packet::system::{
-    Acknowledge, AcknowledgeResult, Request, BootMode, DeviceInformation, DeviceType,
-    RestoreFactorySettings, Reset, ResetMode, IpConfiguration,
+    Acknowledge, AcknowledgeResult, BootMode, DeviceInformation, DeviceType, IpConfiguration,
+    Request, Reset, ResetMode, RestoreFactorySettings,
 };
 
 pub use packet::state::{
-    SystemStatus, FilterStatus, GnssFixType, SystemState, UnixTime, Status,
-    PositionStdDev, VelocityStdDev,
-    EulerOrientationStdDev, QuaternionOrientationStdDev,
-    RawSensors, RawGnss, RawGnssStatus,
-    Satellites,
-    GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
-    Acceleration, BodyAcceleration, EulerOrientation, QuaternionOrientation,
-    DcmOrientation, AngularVelocity, AngularAcceleration,
-    ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
-    ExternalBodyVelocity, ExternalHeading,
-    RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
-    Heave, RawDvlData, DvlStatus,
-    GnssReceiverInformation,
-    SensorTemperature,
-    GnssPositionVelocityTime, GnssOrientation,
-    GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
+    Acceleration, AirDataFlags, AngularAcceleration, AngularVelocity, Automotive, BodyAcceleration,
+    BodyVelocity, DcmOrientation, DvlStatus, EcefPosition, EulerOrientation,
+    EulerOrientationStdDev, ExtendedSatellites, ExternalAirData, ExternalBodyVelocity,
+    ExternalDepth, ExternalHeading, ExternalOdometer, ExternalPosition, ExternalPositionVelocity,
+    ExternalTime, ExternalVelocity, FilterStatus, FormattedTime, GeodeticPosition, GeoidHeight,
+    GimbalState, GnssFixType, GnssOrientation, GnssOrientationStatus, GnssPositionVelocityTime,
+    GnssPvtStatus, GnssReceiverInformation, Heave, InterferenceStatus, NedVelocity,
+    NorthSeekingFlags, NorthSeekingInitialisationStatus, OdometerState, PositionStdDev,
+    QuaternionOrientation, QuaternionOrientationStdDev, RawDvlData, RawGnss, RawGnssStatus,
+    RawSatelliteData, RawSatelliteEphemeris, RawSensors, RtcmCorrections, RunningTime, Satellites,
+    SensorTemperature, SpoofingStatus, Status, SystemState, SystemStatus, SystemTemperature,
+    UnixTime, UtmPosition, VelocityStdDev, VesselMotion, Wind, ZeroAngularVelocity,
 };
 
 pub use packet::receiver::{
     AdvancedNavigationModel, GenericReceiverData, GnssManufacturer, GnssReceiverData,
-    OmnistarEngineMode, ReceiverType, RtkLicenseAccuracy, TrimbleBd992ReceiverData,
-    TrimbleModel, UBloxModel,
+    OmnistarEngineMode, ReceiverType, RtkLicenseAccuracy, TrimbleBd992ReceiverData, TrimbleModel,
+    UBloxModel,
 };
 
 pub use packet::config::{
-    PacketPeriod, PacketTimerPeriod, PacketsPeriod, OffsetVector,
-    InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
-    SetZeroOrientationAlignment, ReferencePointOffsets, UserData,
-    IpDataportMode, IpDataport, IpDataportsConfiguration,
+    FilterOptions, InstallationAlignment, IpDataport, IpDataportMode, IpDataportsConfiguration,
+    OdometerConfiguration, OffsetVector, PacketPeriod, PacketTimerPeriod, PacketsPeriod,
+    ReferencePointOffsets, SetZeroOrientationAlignment, UserData, VehicleType,
 };

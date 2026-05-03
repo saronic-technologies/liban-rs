@@ -1,7 +1,7 @@
 use crate::error::{AnError, Result};
-use crate::packet::{PacketId, PacketKind, AnppHeader, Packet, system::Request};
-use crc::{Crc, Algorithm};
+use crate::packet::{AnppHeader, Packet, PacketId, PacketKind, system::Request};
 use binrw::{BinRead, BinWrite};
+use crc::{Algorithm, Crc};
 use std::io::Cursor;
 
 /// Advanced Navigation Packet Protocol implementation
@@ -151,7 +151,7 @@ impl AnppProtocol {
     #[allow(dead_code)]
     pub(crate) fn create_request(requested_packet_id: PacketId) -> Request {
         Request {
-            requested_packet: PacketKind::from(requested_packet_id.as_u8())
+            requested_packet: PacketKind::from(requested_packet_id.as_u8()),
         }
     }
 }

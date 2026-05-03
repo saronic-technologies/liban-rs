@@ -1,11 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::packet::system::{
-        Acknowledge, AcknowledgeResult, Request, BootMode,
-        DeviceInformation, RestoreFactorySettings,
-        Reset, ResetMode, IpConfiguration
+        Acknowledge, AcknowledgeResult, BootMode, DeviceInformation, IpConfiguration, PacketKind,
+        Request, Reset, ResetMode, RestoreFactorySettings,
     };
-    use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
 
     #[test]

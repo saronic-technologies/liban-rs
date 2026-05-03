@@ -1,5 +1,8 @@
-use crate::packet::{HasPacketId, PacketKind, gpio::{AuxiliaryFunction, GpioFunction, GpioVoltage}};
-use binrw::{binrw, BinRead, BinWrite};
+use crate::packet::{
+    HasPacketId, PacketKind,
+    gpio::{AuxiliaryFunction, GpioFunction, GpioVoltage},
+};
+use binrw::{BinRead, BinWrite, binrw};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -122,8 +125,8 @@ pub enum CanProtocol {
 // ===========================================================================
 
 mod duration_as_millis {
-    use std::time::Duration;
     use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
 
     pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
@@ -138,8 +141,8 @@ mod duration_as_millis {
 }
 
 mod duration_as_millis_u16 {
-    use std::time::Duration;
     use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
 
     pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {

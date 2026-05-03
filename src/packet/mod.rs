@@ -1,4 +1,3 @@
-
 use crate::{Result, error::AnError};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use serde::{Deserialize, Serialize};
@@ -74,30 +73,28 @@ where
 }
 
 // Import packet types from their respective modules
-use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
-            IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
-            SubcomponentInformation};
-use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
-            EulerOrientationStdDev, QuaternionOrientationStdDev,
-            RawSensors, RawGnss, Satellites,
-            GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
-            Acceleration, BodyAcceleration, EulerOrientation, QuaternionOrientation,
-            DcmOrientation, AngularVelocity, AngularAcceleration,
-            ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
-            ExternalBodyVelocity, ExternalHeading,
-            RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
-            Wind, Heave, RawSatelliteData, RawSatelliteEphemeris,
-            ExternalOdometer, ExternalAirData, GimbalState, Automotive,
-            ExtendedSatellites,
-            NorthSeekingInitialisationStatus, RawDvlData,
-            GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
-            VesselMotion,
-            GnssPositionVelocityTime, GnssOrientation};
-use config::{BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
-            GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
-            InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
-            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
-            SetZeroOrientationAlignment, UserData};
+use config::{
+    BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions, GnssConfiguration,
+    GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration, InstallationAlignment,
+    IpDataportsConfiguration, OdometerConfiguration, PacketTimerPeriod, PacketsPeriod,
+    ReferencePointOffsets, SetZeroOrientationAlignment, UserData,
+};
+use state::{
+    Acceleration, AngularAcceleration, AngularVelocity, Automotive, BodyAcceleration, BodyVelocity,
+    DcmOrientation, EcefPosition, EulerOrientation, EulerOrientationStdDev, ExtendedSatellites,
+    ExternalAirData, ExternalBodyVelocity, ExternalDepth, ExternalHeading, ExternalOdometer,
+    ExternalPosition, ExternalPositionVelocity, ExternalTime, ExternalVelocity, FormattedTime,
+    GeodeticPosition, GeoidHeight, GimbalState, GnssOrientation, GnssPositionVelocityTime,
+    GnssReceiverInformation, Heave, NedVelocity, NorthSeekingInitialisationStatus, OdometerState,
+    PositionStdDev, QuaternionOrientation, QuaternionOrientationStdDev, RawDvlData, RawGnss,
+    RawSatelliteData, RawSatelliteEphemeris, RawSensors, RtcmCorrections, RunningTime, Satellites,
+    SensorTemperature, Status, SystemState, SystemTemperature, UnixTime, UtmPosition,
+    VelocityStdDev, VesselMotion, Wind, ZeroAngularVelocity,
+};
+use system::{
+    Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation, IpConfiguration, Request,
+    Reset, RestoreFactorySettings, SerialPortPassthrough, SubcomponentInformation,
+};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -335,23 +332,34 @@ impl Packet {
     /// Convert packet to wire format bytes ready to send (with ANPP framing)
     pub fn to_bytes(&self) -> crate::Result<Vec<u8>> {
         match self {
-            Packet::Request(_) | Packet::BootMode(_) |
-            Packet::RestoreFactorySettings(_) | Packet::Reset(_) |
-            Packet::SerialPortPassthrough(_) |
-            Packet::IpConfiguration(_) |
-            Packet::ExternalPositionVelocity(_) | Packet::ExternalPosition(_) |
-            Packet::ExternalVelocity(_) | Packet::ExternalBodyVelocity(_) |
-            Packet::ExternalHeading(_) | Packet::ExternalTime(_) |
-            Packet::RtcmCorrections(_) |
-            Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
-            Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
-            Packet::GpioConfiguration(_) |
-            Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
-            Packet::ReferencePointOffsets(_) | Packet::GpioOutputConfiguration(_) |
-            Packet::DualAntennaConfiguration(_) | Packet::GnssConfiguration(_) |
-            Packet::GpioInputConfiguration(_) | Packet::CanConfiguration(_) |
-            Packet::UserData(_) |
-            Packet::IpDataportsConfiguration(_) => {
+            Packet::BootMode(_)
+            | Packet::CanConfiguration(_)
+            | Packet::DualAntennaConfiguration(_)
+            | Packet::ExternalBodyVelocity(_)
+            | Packet::ExternalHeading(_)
+            | Packet::ExternalPosition(_)
+            | Packet::ExternalPositionVelocity(_)
+            | Packet::ExternalTime(_)
+            | Packet::ExternalVelocity(_)
+            | Packet::FilterOptions(_)
+            | Packet::GnssConfiguration(_)
+            | Packet::GpioConfiguration(_)
+            | Packet::GpioInputConfiguration(_)
+            | Packet::GpioOutputConfiguration(_)
+            | Packet::InstallationAlignment(_)
+            | Packet::IpConfiguration(_)
+            | Packet::IpDataportsConfiguration(_)
+            | Packet::OdometerConfiguration(_)
+            | Packet::PacketsPeriod(_)
+            | Packet::PacketTimerPeriod(_)
+            | Packet::ReferencePointOffsets(_)
+            | Packet::Request(_)
+            | Packet::Reset(_)
+            | Packet::RestoreFactorySettings(_)
+            | Packet::RtcmCorrections(_)
+            | Packet::SerialPortPassthrough(_)
+            | Packet::SetZeroOrientationAlignment(_)
+            | Packet::UserData(_) => {
                 let packet_id = PacketId::new(self.packet_id());
                 let data = self.payload_bytes()?;
                 crate::protocol::AnppProtocol::get_packet_bytes(packet_id, &data)

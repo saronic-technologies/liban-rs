@@ -1,14 +1,11 @@
 #[cfg(test)]
 mod tests {
     use crate::packet::config::{
-        PacketTimerPeriod, PacketsPeriod, PacketPeriod,
-        InstallationAlignment, OffsetVector, FilterOptions, VehicleType,
-        OdometerConfiguration, SetZeroOrientationAlignment,
-        ReferencePointOffsets, DualAntennaConfiguration,
-        OffsetType, AutomaticOffsetOrientation,
-        IpDataportsConfiguration, IpDataport, IpDataportMode,
+        AutomaticOffsetOrientation, DualAntennaConfiguration, FilterOptions, InstallationAlignment,
+        IpDataport, IpDataportMode, IpDataportsConfiguration, OdometerConfiguration, OffsetType,
+        OffsetVector, PacketKind, PacketPeriod, PacketTimerPeriod, PacketsPeriod,
+        ReferencePointOffsets, SetZeroOrientationAlignment, VehicleType,
     };
-    use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
     use std::time::Duration;
 

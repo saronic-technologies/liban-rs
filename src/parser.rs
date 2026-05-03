@@ -1,4 +1,7 @@
-use crate::{packet::{Packet, PacketKind, PacketLength}, protocol::AnppProtocol};
+use crate::{
+    packet::{Packet, PacketKind, PacketLength},
+    protocol::AnppProtocol,
+};
 use tracing::debug;
 
 #[derive(Debug)]

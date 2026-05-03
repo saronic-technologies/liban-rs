@@ -1,4 +1,4 @@
-use binrw::{binrw, BinRead, BinResult, BinWrite, Endian};
+use binrw::{BinRead, BinResult, BinWrite, Endian, binrw};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
 
@@ -93,11 +93,7 @@ impl GnssManufacturer {
         }
     }
 
-    pub(crate) fn parse<R: Read + Seek>(
-        reader: &mut R,
-        endian: Endian,
-        _: (),
-    ) -> BinResult<Self> {
+    pub(crate) fn parse<R: Read + Seek>(reader: &mut R, endian: Endian, _: ()) -> BinResult<Self> {
         let manufacturer = u8::read_options(reader, endian, ())?;
         let model = u8::read_options(reader, endian, ())?;
         Ok(match manufacturer {

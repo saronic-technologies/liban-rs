@@ -2,7 +2,7 @@ use super::{
     receiver::{GnssManufacturer, GnssReceiverData},
     satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem},
 };
-use binrw::{binrw, BinRead, BinWrite};
+use binrw::{BinRead, BinWrite, binrw};
 use serde::{Deserialize, Serialize};
 
 // ===========================================================================

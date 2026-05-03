@@ -1,8 +1,6 @@
-use liban::{Packet, PacketsPeriod, PacketPeriod, FilterOptions, VehicleType, Request, PacketKind};
 use clap::Parser as ClapParser;
-use std::io::Write;
-use std::net::TcpStream;
-use std::time::Duration;
+use liban::{FilterOptions, Packet, PacketKind, PacketPeriod, PacketsPeriod, Request, VehicleType};
+use std::{io::Write, net::TcpStream, time::Duration};
 
 #[derive(ClapParser)]
 #[command(name = "send_config")]
