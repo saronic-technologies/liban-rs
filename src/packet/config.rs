@@ -61,6 +61,55 @@ pub enum IpDataportMode {
     UdpClient = 4,
 }
 
+/// Input mode for a serial port in GpioOutputConfiguration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum PortInputMode {
+    Inactive = 0,
+    Nmea0183 = 6,
+    Anpp = 11,
+    GnssReceiverPassthrough = 38,
+}
+
+/// Output mode for a serial port in GpioOutputConfiguration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum PortOutputMode {
+    Inactive = 0,
+    Nmea0183 = 7,
+    Anpp = 12,
+    GnssReceiverPassthrough = 38,
+    Tss1 = 39,
+    Simrad1000 = 40,
+    Simrad3000 = 41,
+}
+
+/// NMEA fix behaviour for a port in GpioOutputConfiguration
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum NmeaFixBehaviour {
+    Normal = 0,
+    /// Always indicate 3D fix when the navigation filter is initialized
+    AlwaysIndicate3dFix = 1,
+}
+
+/// Output rate for a single NMEA sentence on a port
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum PortOutputRate {
+    Disabled = 0,
+    Rate0_1Hz = 1,
+    Rate0_2Hz = 2,
+    Rate0_5Hz = 3,
+    Rate1Hz = 4,
+    Rate2Hz = 5,
+    Rate5Hz = 6,
+    Rate10Hz = 7,
+    Rate25Hz = 8,
+    Rate50Hz = 9,
+    Rate8Hz = 10,
+}
+
 // ===========================================================================
 // Serde helpers for Duration fields
 // ===========================================================================
@@ -301,6 +350,85 @@ pub struct ReferencePointOffsets {
     pub heave_point_2: OffsetVector,
     pub heave_point_3: OffsetVector,
     pub heave_point_4: OffsetVector,
+}
+
+/// NMEA sentence output rates for a single port
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct NmeaOutputRates {
+    /// GPZDA time and date rate
+    pub gpzda: PortOutputRate,
+    /// GPGGA GPS fix data rate
+    pub gpgga: PortOutputRate,
+    /// GPVTG course over ground and ground speed rate
+    pub gpvtg: PortOutputRate,
+    /// GPRMC recommended minimum specific GPS/transit data rate
+    pub gprmc: PortOutputRate,
+    /// GPHDT heading, true rate
+    pub gphdt: PortOutputRate,
+    /// GPGLL geographic position, latitude and longitude rate
+    pub gpgll: PortOutputRate,
+    /// PASHR proprietary roll, pitch, and heading rate
+    pub pashr: PortOutputRate,
+    /// TSS1 heading and motion data rate
+    pub tss1: PortOutputRate,
+    /// Simrad heading and motion data rate
+    pub simrad: PortOutputRate,
+    /// GPROT rate of turn rate
+    pub gprot: PortOutputRate,
+    /// GPHEV heave rate
+    pub gphev: PortOutputRate,
+    /// GPGSV satellites in view rate
+    pub gpgsv: PortOutputRate,
+    /// PFECAtt attitude rate
+    pub pfecatt: PortOutputRate,
+    /// PFECHve heave rate
+    pub pfechve: PortOutputRate,
+    /// GPGST position error statistics rate
+    pub gpgst: PortOutputRate,
+}
+
+/// Configuration for a single serial port in GpioOutputConfiguration
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PortConfiguration {
+    /// Input mode for this port
+    pub input_mode: PortInputMode,
+    /// Output mode for this port
+    pub output_mode: PortOutputMode,
+    /// NMEA fix behaviour for this port
+    pub nmea_fix_behaviour: NmeaFixBehaviour,
+    /// NMEA sentence output rates for this port
+    pub output_rates: NmeaOutputRates,
+    #[br(temp)]
+    #[bw(calc = [0u8; 8])]
+    _reserved: [u8; 8],
+}
+
+/// GPIO output configuration packet (Packet ID 195, Length 183) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GpioOutputConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Auxiliary RS232 port configuration
+    pub auxiliary_port: PortConfiguration,
+    /// GPIO port configuration
+    pub gpio_port: PortConfiguration,
+    /// Logging port configuration
+    pub logging_port: PortConfiguration,
+    /// Data port 1 configuration
+    pub data_port_1: PortConfiguration,
+    /// Data port 2 configuration
+    pub data_port_2: PortConfiguration,
+    /// Data port 3 configuration
+    pub data_port_3: PortConfiguration,
+    /// Data port 4 configuration
+    pub data_port_4: PortConfiguration,
 }
 
 /// IP dataport configuration entry
