@@ -753,6 +753,45 @@ pub struct ExternalOdometer {
     pub reversing_detection_supported: bool,
 }
 
+/// Air data flags bitfield for ExternalAirData
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct AirDataFlags(u8);
+
+impl AirDataFlags {
+    pub fn raw(&self) -> u8 { self.0 }
+    pub fn barometric_altitude_valid(&self) -> bool { self.0 & (1 << 0) != 0 }
+    pub fn airspeed_valid(&self) -> bool { self.0 & (1 << 1) != 0 }
+    pub fn barometric_altitude_over_range(&self) -> bool { self.0 & (1 << 2) != 0 }
+    pub fn airspeed_over_range(&self) -> bool { self.0 & (1 << 3) != 0 }
+    pub fn barometric_altitude_sensor_failure(&self) -> bool { self.0 & (1 << 4) != 0 }
+    pub fn airspeed_sensor_failure(&self) -> bool { self.0 & (1 << 5) != 0 }
+}
+
+impl From<u8> for AirDataFlags {
+    fn from(v: u8) -> Self { Self(v) }
+}
+
+/// External air data packet (Packet ID 68, Length 25) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExternalAirData {
+    /// Barometric altitude measurement delay in seconds
+    pub barometric_altitude_delay: f32,
+    /// Airspeed measurement delay in seconds
+    pub airspeed_delay: f32,
+    /// Barometric altitude in meters
+    pub barometric_altitude: f32,
+    /// True airspeed in m/s
+    pub airspeed: f32,
+    /// Barometric altitude standard deviation in meters
+    pub barometric_altitude_std_dev: f32,
+    /// Airspeed standard deviation in m/s
+    pub airspeed_std_dev: f32,
+    /// Validity and sensor status flags
+    pub flags: AirDataFlags,
+}
+
 /// Raw DVL data packet (Packet ID 70, Length 60) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
