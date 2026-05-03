@@ -1,8 +1,7 @@
+use crate::packet::{HasPacketId, PacketKind, gpio::{AuxiliaryFunction, GpioFunction, GpioVoltage}};
 use binrw::{binrw, BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
-
-use crate::packet::{PacketKind, HasPacketId};
 
 /// 3D offset vector for installation alignment
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
@@ -235,6 +234,30 @@ pub struct FilterOptions {
     #[br(temp)]
     #[bw(calc = [0u8; 7])]
     _reserved3: [u8; 7],
+}
+
+/// GPIO configuration packet (Packet ID 188, Length 13) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GpioConfiguration {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// GPIO 1 function
+    pub gpio1_function: GpioFunction,
+    /// GPIO 2 function
+    pub gpio2_function: GpioFunction,
+    /// Auxiliary RS232 transmit function
+    pub auxiliary_tx_function: AuxiliaryFunction,
+    /// Auxiliary RS232 receive function
+    pub auxiliary_rx_function: AuxiliaryFunction,
+    /// GPIO voltage selection
+    pub gpio_voltage: GpioVoltage,
+    #[br(temp)]
+    #[bw(calc = [0u8; 7])]
+    _reserved: [u8; 7],
 }
 
 /// Odometer configuration packet (Packet ID 192, Length 8) - Read/Write

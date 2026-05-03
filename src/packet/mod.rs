@@ -1,10 +1,12 @@
 
-use binrw::{BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
 use crate::{Result, error::AnError};
-pub mod system;
-pub mod state;
+use binrw::{BinRead, BinWrite};
+use serde::{Deserialize, Serialize};
+
 pub mod config;
+pub mod gpio;
+pub mod state;
+pub mod system;
 
 /// ANPP packet identifier structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
@@ -74,10 +76,10 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
-use config::{PacketTimerPeriod, PacketsPeriod, BaudRates, InstallationAlignment,
-            FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
-            ReferencePointOffsets, DualAntennaConfiguration, UserData,
-            IpDataportsConfiguration};
+use config::{BaudRates, DualAntennaConfiguration, FilterOptions, GpioConfiguration,
+            InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
+            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
+            SetZeroOrientationAlignment, UserData};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -243,6 +245,7 @@ define_packets!(
     BaudRates => 182, Fixed(17),
     InstallationAlignment => 185, Fixed(73),
     FilterOptions => 186, Fixed(17),
+    GpioConfiguration => 188, Fixed(13),
     OdometerConfiguration => 192, Fixed(8),
     SetZeroOrientationAlignment => 193, Fixed(5),
     ReferencePointOffsets => 194, Fixed(49),
@@ -264,6 +267,7 @@ impl Packet {
             Packet::RtcmCorrections(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
+            Packet::GpioConfiguration(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
             Packet::ReferencePointOffsets(_) | Packet::DualAntennaConfiguration(_) |
             Packet::UserData(_) |
