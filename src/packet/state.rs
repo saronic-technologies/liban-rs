@@ -877,6 +877,18 @@ impl From<(u8, u8)> for GnssReceiverModel {
     }
 }
 
+/// Gimbal state packet (Packet ID 72, Length 8) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GimbalState {
+    /// Current gimbal angle in radians
+    pub angle: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
 /// North seeking initialisation status flags bitfield
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
