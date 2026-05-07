@@ -1,5 +1,9 @@
+use super::{
+    receiver::{GnssManufacturer, GnssReceiverData},
+    satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem},
+};
 use binrw::{binrw, BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // ===========================================================================
 // Enums and Status Types
@@ -214,6 +218,21 @@ pub struct SystemState {
 pub struct UnixTime {
     pub unix_time_seconds: u32,
     pub microseconds: u32,
+}
+
+/// Formatted time packet (Packet ID 22, Length 14) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct FormattedTime {
+    pub microseconds: u32,
+    pub year: u16,
+    pub year_day: u16,
+    pub month: u8,
+    pub month_day: u8,
+    pub week_day: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub second: u8,
 }
 
 /// Status packet (Packet ID 23, Length 4) - Read only
@@ -579,7 +598,9 @@ pub struct ExternalVelocity {
     pub velocity_down_std_dev: f32,
 }
 
-/// External body velocity packet (Packet ID 47, Length 16) - Write only
+/// External body velocity packet (Packet ID 47, Length 16 or 24) - Write only
+///
+/// The 16-byte variant represents isotropic velocity error: all three standard deviations are equal.
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct ExternalBodyVelocity {
@@ -589,8 +610,18 @@ pub struct ExternalBodyVelocity {
     pub velocity_y: f32,
     /// Velocity Z in m/s
     pub velocity_z: f32,
-    /// Standard deviation in m/s
-    pub standard_deviation: f32,
+    /// Velocity X standard deviation in m/s
+    pub velocity_x_std_dev: f32,
+    /// Velocity Y standard deviation in m/s
+    #[br(parse_with = |reader, endian, (fallback,): (f32,)| {
+        f32::read_options(reader, endian, ()).or(Ok(fallback))
+    }, args(velocity_x_std_dev))]
+    pub velocity_y_std_dev: f32,
+    /// Velocity Z standard deviation in m/s
+    #[br(parse_with = |reader, endian, (fallback,): (f32,)| {
+        f32::read_options(reader, endian, ()).or(Ok(fallback))
+    }, args(velocity_x_std_dev))]
+    pub velocity_z_std_dev: f32,
 }
 
 /// External heading packet (Packet ID 48, Length 8) - Write only
@@ -613,12 +644,42 @@ pub struct RunningTime {
     pub microseconds: u32,
 }
 
+/// Odometer state packet (Packet ID 51, Length 20) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OdometerState {
+    pub pulse_count: i32,
+    /// Distance in meters
+    pub distance: f32,
+    /// Speed in m/s
+    pub speed: f32,
+    /// Slip in meters
+    pub slip: f32,
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub active: bool,
+    #[br(temp)]
+    #[bw(calc = [0u8; 3])]
+    _reserved: [u8; 3],
+}
+
 /// External time packet (Packet ID 52, Length 8) - Write only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct ExternalTime {
     pub unix_time_seconds: u32,
     pub microseconds: u32,
+}
+
+/// External depth packet (Packet ID 53, Length 8) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExternalDepth {
+    /// Depth below mean sea level in meters
+    pub depth: f32,
+    /// Depth standard deviation in meters
+    pub depth_std_dev: f32,
 }
 
 /// Geoid height packet (Packet ID 54, Length 4) - Read only
@@ -638,6 +699,18 @@ pub struct RtcmCorrections {
     pub data: Vec<u8>,
 }
 
+/// Wind packet (Packet ID 57, Length 12) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct Wind {
+    /// Wind velocity north in m/s
+    pub velocity_north: f32,
+    /// Wind velocity east in m/s
+    pub velocity_east: f32,
+    /// Wind velocity standard deviation in m/s
+    pub velocity_std_dev: f32,
+}
+
 /// Heave packet (Packet ID 58, Length 16) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
@@ -646,6 +719,49 @@ pub struct Heave {
     pub heave_point_2: f32,
     pub heave_point_3: f32,
     pub heave_point_4: f32,
+}
+
+/// Raw satellite data packet (Packet ID 60, Variable length) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawSatelliteData {
+    /// Unix timestamp (seconds)
+    pub unix_time: u32,
+    /// Nanoseconds part of timestamp
+    pub nanoseconds: u32,
+    /// Receiver clock offset (nanoseconds)
+    pub receiver_clock_offset: i32,
+    /// Receiver number
+    pub receiver_number: u8,
+    /// Packet number (range 1 to Total)
+    pub packet_number: u8,
+    /// Total packets
+    pub total_packets: u8,
+    #[br(temp)]
+    #[bw(calc = satellites.len() as u8)]
+    num_satellites: u8,
+    /// Per-satellite measurements
+    #[br(count = num_satellites)]
+    pub satellites: Vec<RawSatelliteEntry>,
+}
+
+/// Raw satellite ephemeris packet (Packet ID 61, Length 132 GPS / 94 GLONASS) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RawSatelliteEphemeris {
+    /// Unix timestamp (seconds)
+    pub unix_time: u32,
+    /// Satellite system
+    #[br(map = |x: u8| SatelliteSystem::from(x))]
+    #[bw(map = |x: &SatelliteSystem| *x as u8)]
+    pub satellite_system: SatelliteSystem,
+    /// Satellite number (PRN)
+    pub prn: u8,
+    /// System-specific ephemeris data
+    #[br(args(satellite_system))]
+    pub data: EphemerisData,
 }
 
 /// DVL status flags bitfield
@@ -664,6 +780,77 @@ impl DvlStatus {
 
 impl From<u32> for DvlStatus {
     fn from(v: u32) -> Self { Self(v) }
+}
+
+/// External odometer packet (Packet ID 67, Length 13) - Write only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExternalOdometer {
+    /// Estimated measurement delay in seconds
+    pub estimated_delay: f32,
+    /// Speed in m/s
+    pub speed: f32,
+    #[br(temp)]
+    #[bw(calc = 0f32)]
+    _reserved: f32,
+    /// Whether the odometer supports reversing detection
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub reversing_detection_supported: bool,
+}
+
+/// Air data flags bitfield for ExternalAirData
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct AirDataFlags(u8);
+
+impl AirDataFlags {
+    pub fn raw(&self) -> u8 { self.0 }
+    pub fn barometric_altitude_valid(&self) -> bool { self.0 & (1 << 0) != 0 }
+    pub fn airspeed_valid(&self) -> bool { self.0 & (1 << 1) != 0 }
+    pub fn barometric_altitude_over_range(&self) -> bool { self.0 & (1 << 2) != 0 }
+    pub fn airspeed_over_range(&self) -> bool { self.0 & (1 << 3) != 0 }
+    pub fn barometric_altitude_sensor_failure(&self) -> bool { self.0 & (1 << 4) != 0 }
+    pub fn airspeed_sensor_failure(&self) -> bool { self.0 & (1 << 5) != 0 }
+}
+
+impl From<u8> for AirDataFlags {
+    fn from(v: u8) -> Self { Self(v) }
+}
+
+/// External air data packet (Packet ID 68, Length 25) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExternalAirData {
+    /// Barometric altitude measurement delay in seconds
+    pub barometric_altitude_delay: f32,
+    /// Airspeed measurement delay in seconds
+    pub airspeed_delay: f32,
+    /// Barometric altitude in meters
+    pub barometric_altitude: f32,
+    /// True airspeed in m/s
+    pub airspeed: f32,
+    /// Barometric altitude standard deviation in meters
+    pub barometric_altitude_std_dev: f32,
+    /// Airspeed standard deviation in m/s
+    pub airspeed_std_dev: f32,
+    /// Validity and sensor status flags
+    pub flags: AirDataFlags,
+}
+
+/// GNSS receiver information packet (Packet ID 69, Length 48 or 68) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GnssReceiverInformation {
+    /// Manufacturer and receiver model (2-byte header)
+    #[br(parse_with = GnssManufacturer::parse)]
+    #[bw(write_with = GnssManufacturer::write_to)]
+    pub manufacturer: GnssManufacturer,
+    /// Receiver-specific payload, layout determined by manufacturer and model
+    #[br(args(manufacturer.receiver_type()))]
+    pub data: GnssReceiverData,
 }
 
 /// Raw DVL data packet (Packet ID 70, Length 60) - Read only
@@ -699,91 +886,107 @@ pub struct RawDvlData {
     pub temperature: f32,
 }
 
-/// GNSS manufacturer identifier
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GnssManufacturer {
-    #[default]
-    Unknown = 0,
-    Trimble = 1,
-    UBlox = 2,
-    AdvancedNavigation = 3,
+/// North seeking initialisation status flags bitfield
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct NorthSeekingFlags(u16);
+
+impl NorthSeekingFlags {
+    pub fn raw(&self) -> u16 { self.0 }
+    pub fn initialisation_complete(&self) -> bool { self.0 & (1 << 0) != 0 }
+    pub fn cannot_start_position_unknown(&self) -> bool { self.0 & (1 << 1) != 0 }
+    pub fn solution_out_of_range(&self) -> bool { self.0 & (1 << 2) != 0 }
+    pub fn solution_non_orthogonal(&self) -> bool { self.0 & (1 << 3) != 0 }
+    pub fn restarted_excessive_movement(&self) -> bool { self.0 & (1 << 4) != 0 }
+    pub fn restarted_latitude_change(&self) -> bool { self.0 & (1 << 5) != 0 }
+    pub fn restarted_lever_arm_change(&self) -> bool { self.0 & (1 << 6) != 0 }
+    pub fn latitude_check_failed(&self) -> bool { self.0 & (1 << 7) != 0 }
 }
 
-impl From<u8> for GnssManufacturer {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::Unknown,
-            1 => Self::Trimble,
-            2 => Self::UBlox,
-            3 => Self::AdvancedNavigation,
-            _ => Self::Unknown,
-        }
-    }
+impl From<u16> for NorthSeekingFlags {
+    fn from(v: u16) -> Self { Self(v) }
 }
 
-/// GNSS receiver model (decoded from manufacturer + model ID)
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GnssReceiverModel {
-    #[default]
-    Unknown,
-    /// Trimble MB-Two
-    TrimbleMbTwo,
-    /// Trimble BD992
-    TrimbleBd992,
-    /// u-blox NEO-F9P
-    UBloxNeoF9P,
-    /// Advanced Navigation Aries
-    Aries,
-    /// Advanced Navigation Aries GC2
-    AriesGc2,
-}
-
-impl From<(u8, u8)> for GnssReceiverModel {
-    fn from((manufacturer, model): (u8, u8)) -> Self {
-        match (manufacturer, model) {
-            (1, 5) => Self::TrimbleMbTwo,
-            (1, 7) => Self::TrimbleBd992,
-            (2, 5) => Self::UBloxNeoF9P,
-            (3, 1) => Self::Aries,
-            (3, 2) => Self::AriesGc2,
-            _ => Self::Unknown,
-        }
-    }
-}
-
-/// GNSS receiver information packet (Packet ID 69, Length 68) - Read only
+/// North seeking initialisation status packet (Packet ID 71, Length 28) - Read only
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GnssReceiverInformation {
-    #[br(map = |x: u8| GnssManufacturer::from(x))]
-    #[bw(map = |x: &GnssManufacturer| *x as u8)]
-    pub manufacturer: GnssManufacturer,
-    /// Raw receiver model byte (use `receiver_model()` to decode)
-    pub receiver_model_id: u8,
-    /// Serial number as ASCII string (24 bytes)
-    pub serial_number: [u8; 24],
-    pub firmware_version: u32,
-    pub hardware_version: u32,
+pub struct NorthSeekingInitialisationStatus {
+    /// Initialisation status flags
+    pub flags: NorthSeekingFlags,
+    /// Firmware version
+    pub version: u16,
+    /// Initialisation progress as a percentage
+    pub progress: u8,
+    /// Number of alignment attempts
+    pub alignment_attempts: u8,
     #[br(temp)]
-    #[bw(calc = [0u8; 34])]
-    _reserved: [u8; 34],
+    #[bw(calc = [0u8; 2])]
+    _reserved1: [u8; 2],
+    /// Coarse alignment heading in radians
+    pub coarse_alignment_heading: f32,
+    /// Predicted heading accuracy in radians
+    pub predicted_accuracy: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 12])]
+    _reserved2: [u8; 12],
 }
 
-impl GnssReceiverInformation {
-    /// Decode the receiver model from manufacturer + model ID
-    pub fn receiver_model(&self) -> GnssReceiverModel {
-        GnssReceiverModel::from((self.manufacturer as u8, self.receiver_model_id))
-    }
+/// Gimbal state packet (Packet ID 72, Length 8) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GimbalState {
+    /// Current gimbal angle in radians
+    pub angle: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
 
-    /// Get serial number as a string
-    pub fn serial_number_str(&self) -> &str {
-        let len = self.serial_number.iter().position(|&b| b == 0).unwrap_or(self.serial_number.len());
-        match std::str::from_utf8(&self.serial_number[..len]) {
-            Ok(s) if !s.is_empty() => s,
-            _ => "unknown",
-        }
-    }
+/// Automotive packet (Packet ID 73, Length 24) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Automotive {
+    /// Virtual odometer distance in meters
+    pub virtual_odometer_distance: f32,
+    /// Slip angle in radians
+    pub slip_angle: f32,
+    /// Velocity X in m/s
+    pub velocity_x: f32,
+    /// Velocity Y in m/s
+    pub velocity_y: f32,
+    /// Distance standard deviation in meters
+    pub distance_std_dev: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
+/// Zero angular velocity packet (Packet ID 83, Length 8) - Write only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZeroAngularVelocity {
+    /// Duration the unit has been stationary about the heading axis in seconds
+    pub duration: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 4])]
+    _reserved: [u8; 4],
+}
+
+/// Extended satellites packet (Packet ID 84, Variable length) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExtendedSatellites {
+    /// Total number of extended satellites packets
+    pub total_packets: u8,
+    /// Packet number (range 1 to Total)
+    pub packet_number: u8,
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
+    pub satellites: Vec<ExtendedSatelliteEntry>,
 }
 
 /// Sensor temperature packet (Packet ID 85, Length 32) - Read only
@@ -801,6 +1004,48 @@ pub struct SensorTemperature {
     #[bw(calc = 0.0f32)]
     _reserved: f32,
     pub pressure_sensor_temp: f32,
+}
+
+/// System temperature packet (Packet ID 86, Length 64) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SystemTemperature {
+    /// System temperature in degrees Celsius
+    pub temperature: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 60])]
+    _reserved: [u8; 60],
+}
+
+/// Vessel motion packet (Packet ID 89, Length 48) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct VesselMotion {
+    /// Surge at reference point 1 in meters
+    pub surge_point_1: f32,
+    /// Surge at reference point 2 in meters
+    pub surge_point_2: f32,
+    /// Surge at reference point 3 in meters
+    pub surge_point_3: f32,
+    /// Surge at reference point 4 in meters
+    pub surge_point_4: f32,
+    /// Sway at reference point 1 in meters
+    pub sway_point_1: f32,
+    /// Sway at reference point 2 in meters
+    pub sway_point_2: f32,
+    /// Sway at reference point 3 in meters
+    pub sway_point_3: f32,
+    /// Sway at reference point 4 in meters
+    pub sway_point_4: f32,
+    /// Heave at reference point 1 in meters
+    pub heave_point_1: f32,
+    /// Heave at reference point 2 in meters
+    pub heave_point_2: f32,
+    /// Heave at reference point 3 in meters
+    pub heave_point_3: f32,
+    /// Heave at reference point 4 in meters
+    pub heave_point_4: f32,
 }
 
 /// GNSS Position Velocity Time packet (Packet ID 92, Length 76) - Read only

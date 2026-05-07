@@ -1,7 +1,6 @@
-use binrw::{binrw, BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
-
 use super::PacketKind;
+use binrw::{binrw, BinRead, BinWrite};
+use serde::{Deserialize, Serialize};
 
 /// Acknowledge result codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,6 +140,28 @@ pub struct Reset {
     _verification: u32,
 }
 
+/// Passthrough route for SerialPortPassthrough
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum PassthroughRoute {
+    /// GPIO 1 and 2
+    Gpio1And2 = 1,
+    /// Auxiliary port
+    Auxiliary = 2,
+}
+
+/// Serial port passthrough packet (Packet ID 10, Variable length) - Read/Write
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct SerialPortPassthrough {
+    /// Passthrough route
+    pub route: PassthroughRoute,
+    /// Passthrough data
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
+    pub data: Vec<u8>,
+}
+
 /// IP configuration packet (Packet ID 11, Length 30) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
@@ -156,6 +177,72 @@ pub struct IpConfiguration {
     pub boreas_serial_number_part_1: u32,
     pub boreas_serial_number_part_2: u32,
     pub boreas_serial_number_part_3: u32,
+}
+
+/// Extended device information packet (Packet ID 13, Length 36) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExtendedDeviceInformation {
+    /// Software version
+    pub software_version: u32,
+    /// Device type identifier
+    pub device_id: DeviceType,
+    /// Hardware revision
+    pub hardware_revision: u32,
+    /// Device serial number
+    pub serial_number: [u32; 3],
+    /// Device sub-type
+    pub device_sub_type: u32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 8])]
+    _reserved: [u8; 8],
+}
+
+/// Subcomponent device identifier
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SubcomponentDeviceId {
+    #[default]
+    Unknown = 0,
+    SpatialMemsImu = 5,
+    EvoMemsImu = 17,
+    Aries = 27,
+}
+
+impl From<u32> for SubcomponentDeviceId {
+    fn from(v: u32) -> Self {
+        match v {
+            5 => Self::SpatialMemsImu,
+            17 => Self::EvoMemsImu,
+            27 => Self::Aries,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// Single subcomponent entry within SubcomponentInformation
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct SubcomponentEntry {
+    /// Subcomponent software version
+    pub software_version: u32,
+    /// Subcomponent device identifier
+    #[br(map = |x: u32| SubcomponentDeviceId::from(x))]
+    #[bw(map = |x: &SubcomponentDeviceId| *x as u32)]
+    pub device_id: SubcomponentDeviceId,
+    /// Subcomponent hardware revision
+    pub hardware_revision: u32,
+    /// Subcomponent serial number
+    pub serial_number: [u32; 3],
+}
+
+/// Subcomponent information packet (Packet ID 14, Variable length) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct SubcomponentInformation {
+    #[br(parse_with = binrw::helpers::until_eof)]
+    #[bw(write_with = super::write_vec)]
+    pub subcomponents: Vec<SubcomponentEntry>,
 }
 
 #[cfg(test)]

@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         velocity_heading_enabled: true,
         reversing_detection_enabled: false,
         motion_analysis_enabled: true,
+        dual_antenna_disabled: false,
     };
 
     let packet = Packet::FilterOptions(filter_opts);

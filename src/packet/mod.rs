@@ -1,10 +1,15 @@
 
-use binrw::{BinRead, BinWrite};
-use serde::{Serialize, Deserialize};
 use crate::{Result, error::AnError};
-pub mod system;
-pub mod state;
+use binrw::{BinRead, BinResult, BinWrite, Endian};
+use serde::{Deserialize, Serialize};
+use std::io::{Seek, Write};
+
 pub mod config;
+pub mod gpio;
+pub mod receiver;
+pub mod satellite;
+pub mod state;
+pub mod system;
 
 /// ANPP packet identifier structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
@@ -44,10 +49,35 @@ pub trait HasPacketId {
     const PACKET_ID: PacketId;
 }
 
+/// Describes the expected payload length for a packet kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PacketLength {
+    /// Exactly one valid length.
+    Fixed(usize),
+    /// A fixed set of valid lengths (e.g. optional trailing fields).
+    OneOf(&'static [usize]),
+    /// Length varies arbitrarily; no header check performed.
+    Variable,
+}
+
+use PacketLength::*;
+
+/// Writes each element of a `Vec<T>` in sequence, for use with `#[bw(write_with = ...)]`.
+// binrw's write_with macro passes &Vec<T> by field type, so &[T] is not accepted here
+#[allow(clippy::ptr_arg)]
+pub(crate) fn write_vec<W, T>(data: &Vec<T>, writer: &mut W, endian: Endian, _args: ()) -> BinResult<()>
+where
+    W: Write + Seek,
+    T: for<'a> BinWrite<Args<'a> = ()>,
+{
+    data.iter().try_for_each(|item| item.write_options(writer, endian, ()))
+}
+
 // Import packet types from their respective modules
-use system::{Acknowledge, Request, BootMode, DeviceInformation,
-            RestoreFactorySettings, Reset, IpConfiguration};
-use state::{SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
+use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
+            IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
+            SubcomponentInformation};
+use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
             RawSensors, RawGnss, Satellites,
             GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
@@ -55,14 +85,19 @@ use state::{SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
             DcmOrientation, AngularVelocity, AngularAcceleration,
             ExternalPositionVelocity, ExternalPosition, ExternalVelocity,
             ExternalBodyVelocity, ExternalHeading,
-            RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
-            Heave, RawDvlData,
-            GnssReceiverInformation, SensorTemperature,
+            RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
+            Wind, Heave, RawSatelliteData, RawSatelliteEphemeris,
+            ExternalOdometer, ExternalAirData, GimbalState, Automotive,
+            ExtendedSatellites,
+            NorthSeekingInitialisationStatus, RawDvlData,
+            GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
+            VesselMotion,
             GnssPositionVelocityTime, GnssOrientation};
-use config::{PacketTimerPeriod, PacketsPeriod, InstallationAlignment,
-            FilterOptions, OdometerConfiguration, SetZeroOrientationAlignment,
-            ReferencePointOffsets, DualAntennaConfiguration, UserData,
-            IpDataportsConfiguration};
+use config::{BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
+            GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
+            InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
+            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
+            SetZeroOrientationAlignment, UserData};
 
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
@@ -80,11 +115,11 @@ macro_rules! define_packets {
         }
 
         impl PacketKind {
-            /// Get the expected byte length for this packet kind
-            pub fn byte_length(&self) -> Option<usize> {
+            /// Get the expected payload length for this packet kind
+            pub fn byte_length(&self) -> PacketLength {
                 match self {
                     $( PacketKind::$variant => $length, )+
-                    PacketKind::Unsupported => None,
+                    PacketKind::Unsupported => Variable,
                 }
             }
 
@@ -163,64 +198,88 @@ macro_rules! define_packets {
 
 define_packets!(
     // System Packets (0-14)
-    Acknowledge => 0, Some(4),
-    Request => 1, Some(1),
-    BootMode => 2, Some(1),
-    DeviceInformation => 3, Some(24),
-    RestoreFactorySettings => 4, Some(4),
-    Reset => 5, Some(4),
-    IpConfiguration => 11, Some(30),
+    Acknowledge => 0, Fixed(4),
+    Request => 1, Fixed(1),
+    BootMode => 2, Fixed(1),
+    DeviceInformation => 3, Fixed(24),
+    RestoreFactorySettings => 4, Fixed(4),
+    Reset => 5, Fixed(4),
+    SerialPortPassthrough => 10, Variable,
+    IpConfiguration => 11, Fixed(30),
+    ExtendedDeviceInformation => 13, Fixed(36),
+    SubcomponentInformation => 14, Variable,
 
     // State Packets (20-93)
-    SystemState => 20, Some(100),
-    UnixTime => 21, Some(8),
-    Status => 23, Some(4),
-    PositionStdDev => 24, Some(12),
-    VelocityStdDev => 25, Some(12),
-    EulerOrientationStdDev => 26, Some(12),
-    QuaternionOrientationStdDev => 27, Some(16),
-    RawSensors => 28, Some(48),
-    RawGnss => 29, Some(74),
-    Satellites => 30, Some(13),
-GeodeticPosition => 32, Some(24),
-    EcefPosition => 33, Some(24),
-    UtmPosition => 34, Some(26),
-    NedVelocity => 35, Some(12),
-    BodyVelocity => 36, Some(12),
-    Acceleration => 37, Some(12),
-    BodyAcceleration => 38, Some(16),
-    EulerOrientation => 39, Some(12),
-    QuaternionOrientation => 40, Some(16),
-    DcmOrientation => 41, Some(36),
-    AngularVelocity => 42, Some(12),
-    AngularAcceleration => 43, Some(12),
-    ExternalPositionVelocity => 44, Some(60),
-    ExternalPosition => 45, Some(36),
-    ExternalVelocity => 46, Some(24),
-    ExternalBodyVelocity => 47, Some(16),
-    ExternalHeading => 48, Some(8),
-    RunningTime => 49, Some(8),
-    ExternalTime => 52, Some(8),
-    GeoidHeight => 54, Some(4),
-    RtcmCorrections => 55, None,
-    Heave => 58, Some(16),
-    GnssReceiverInformation => 69, Some(68),
-    RawDvlData => 70, Some(60),
-    SensorTemperature => 85, Some(32),
-    GnssPositionVelocityTime => 92, Some(76),
-    GnssOrientation => 93, Some(36),
+    SystemState => 20, Fixed(100),
+    UnixTime => 21, Fixed(8),
+    FormattedTime => 22, Fixed(14),
+    Status => 23, Fixed(4),
+    PositionStdDev => 24, Fixed(12),
+    VelocityStdDev => 25, Fixed(12),
+    EulerOrientationStdDev => 26, Fixed(12),
+    QuaternionOrientationStdDev => 27, Fixed(16),
+    RawSensors => 28, Fixed(48),
+    RawGnss => 29, Fixed(74),
+    Satellites => 30, Fixed(13),
+    GeodeticPosition => 32, Fixed(24),
+    EcefPosition => 33, Fixed(24),
+    UtmPosition => 34, Fixed(26),
+    NedVelocity => 35, Fixed(12),
+    BodyVelocity => 36, Fixed(12),
+    Acceleration => 37, Fixed(12),
+    BodyAcceleration => 38, Fixed(16),
+    EulerOrientation => 39, Fixed(12),
+    QuaternionOrientation => 40, Fixed(16),
+    DcmOrientation => 41, Fixed(36),
+    AngularVelocity => 42, Fixed(12),
+    AngularAcceleration => 43, Fixed(12),
+    ExternalPositionVelocity => 44, Fixed(60),
+    ExternalPosition => 45, Fixed(36),
+    ExternalVelocity => 46, Fixed(24),
+    ExternalBodyVelocity => 47, OneOf(&[16, 24]),
+    ExternalHeading => 48, Fixed(8),
+    RunningTime => 49, Fixed(8),
+    OdometerState => 51, Fixed(20),
+    ExternalTime => 52, Fixed(8),
+    ExternalDepth => 53, Fixed(8),
+    GeoidHeight => 54, Fixed(4),
+    RtcmCorrections => 55, Variable,
+    Wind => 57, Fixed(12),
+    Heave => 58, Fixed(16),
+    RawSatelliteData => 60, Variable,
+    RawSatelliteEphemeris => 61, OneOf(&[94, 132]),
+    ExternalOdometer => 67, Fixed(13),
+    ExternalAirData => 68, Fixed(25),
+    GnssReceiverInformation => 69, OneOf(&[48, 68]),
+    RawDvlData => 70, Fixed(60),
+    NorthSeekingInitialisationStatus => 71, Fixed(28),
+    GimbalState => 72, Fixed(8),
+    Automotive => 73, Fixed(24),
+    ZeroAngularVelocity => 83, Fixed(8),
+    ExtendedSatellites => 84, Variable,
+    SensorTemperature => 85, Fixed(32),
+    SystemTemperature => 86, Fixed(64),
+    VesselMotion => 89, Fixed(48),
+    GnssPositionVelocityTime => 92, Fixed(76),
+    GnssOrientation => 93, Fixed(36),
 
     // Configuration Packets (180-203)
-    PacketTimerPeriod => 180, Some(4),
-    PacketsPeriod => 181, None,
-    InstallationAlignment => 185, Some(73),
-    FilterOptions => 186, Some(17),
-    OdometerConfiguration => 192, Some(8),
-    SetZeroOrientationAlignment => 193, Some(1),
-    ReferencePointOffsets => 194, Some(49),
-    DualAntennaConfiguration => 196, Some(17),
-    UserData => 198, Some(64),
-    IpDataportsConfiguration => 202, Some(30),
+    PacketTimerPeriod => 180, Fixed(4),
+    PacketsPeriod => 181, Variable,
+    BaudRates => 182, Fixed(17),
+    InstallationAlignment => 185, Fixed(73),
+    FilterOptions => 186, Fixed(17),
+    GpioConfiguration => 188, Fixed(13),
+    OdometerConfiguration => 192, Fixed(8),
+    SetZeroOrientationAlignment => 193, Fixed(5),
+    ReferencePointOffsets => 194, Fixed(49),
+    GpioOutputConfiguration => 195, Fixed(183),
+    DualAntennaConfiguration => 196, Fixed(17),
+    GnssConfiguration => 197, Fixed(85),
+    UserData => 198, Fixed(64),
+    GpioInputConfiguration => 199, Fixed(65),
+    IpDataportsConfiguration => 202, Fixed(30),
+    CanConfiguration => 203, Fixed(11),
 );
 
 impl Packet {
@@ -229,6 +288,7 @@ impl Packet {
         match self {
             Packet::Request(_) | Packet::BootMode(_) |
             Packet::RestoreFactorySettings(_) | Packet::Reset(_) |
+            Packet::SerialPortPassthrough(_) |
             Packet::IpConfiguration(_) |
             Packet::ExternalPositionVelocity(_) | Packet::ExternalPosition(_) |
             Packet::ExternalVelocity(_) | Packet::ExternalBodyVelocity(_) |
@@ -236,8 +296,11 @@ impl Packet {
             Packet::RtcmCorrections(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
+            Packet::GpioConfiguration(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
-            Packet::ReferencePointOffsets(_) | Packet::DualAntennaConfiguration(_) |
+            Packet::ReferencePointOffsets(_) | Packet::GpioOutputConfiguration(_) |
+            Packet::DualAntennaConfiguration(_) | Packet::GnssConfiguration(_) |
+            Packet::GpioInputConfiguration(_) | Packet::CanConfiguration(_) |
             Packet::UserData(_) |
             Packet::IpDataportsConfiguration(_) => {
                 let packet_id = PacketId::new(self.packet_id());

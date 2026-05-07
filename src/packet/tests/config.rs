@@ -108,6 +108,7 @@ mod tests {
             velocity_heading_enabled: true,
             reversing_detection_enabled: false,
             motion_analysis_enabled: true,
+            dual_antenna_disabled: false,
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
@@ -137,7 +138,7 @@ mod tests {
         let mut cursor = std::io::Cursor::new(Vec::new());
         packet.write_le(&mut cursor).expect("Failed to serialize");
         let bytes = cursor.into_inner();
-        assert_eq!(bytes.len(), 1, "SetZeroOrientationAlignment should be 1 byte");
+        assert_eq!(bytes.len(), 5, "SetZeroOrientationAlignment should be 5 bytes");
     }
 
     #[test]
@@ -211,6 +212,7 @@ mod tests {
             velocity_heading_enabled: true,
             reversing_detection_enabled: false,
             motion_analysis_enabled: true,
+            dual_antenna_disabled: false,
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
