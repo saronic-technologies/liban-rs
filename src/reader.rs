@@ -29,7 +29,6 @@ const BUFFER_SIZE: usize = 1024 * 8;
 ///     Ok(())
 /// }
 /// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct AnppReader<R: Read> {
     reader: R,
     parser: AnppParser,
