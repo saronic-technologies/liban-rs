@@ -16,7 +16,7 @@ pub use parser::{AnppParser, parse_datagram, DatagramError};
 // Re-export all public types from packet modules
 pub use packet::system::{
     Acknowledge, AcknowledgeResult, Request, BootMode, DeviceInformation, DeviceType,
-    RestoreFactorySettings, Reset, IpConfiguration,
+    RestoreFactorySettings, Reset, ResetMode, IpConfiguration,
 };
 
 pub use packet::state::{

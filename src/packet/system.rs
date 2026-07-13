@@ -130,14 +130,25 @@ pub struct RestoreFactorySettings {
     _verification: u32,
 }
 
+/// Reset mode selected by the Reset packet's verification word.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u32)]
+#[repr(u32)]
+pub enum ResetMode {
+    /// Perform a powers cycle. No configuration settings or state data are lost.
+    HotStart = 0x21057A7E,
+    /// Clears all filters, and connections are reset and must be re-established. 
+    /// No configuration settings are lost.
+    ColdStart = 0x9A5D38B7,
+}
+
 /// Reset packet (Packet ID 5, Length 4) - Write only
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Reset {
-    #[br(temp)]
-    #[bw(calc = 0x21057A7Eu32)]
-    _verification: u32,
+    /// Reset mode the device performs.
+    pub mode: ResetMode,
 }
 
 /// Passthrough route for SerialPortPassthrough
@@ -297,13 +308,28 @@ mod tests {
 
     #[test]
     fn test_reset_write() {
-        let packet = Reset {};
+        let packet = Reset {
+            mode: ResetMode::HotStart,
+        };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
         packet.write_le(&mut cursor).unwrap();
         let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4);
         assert_eq!(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), 0x21057A7E);
+    }
+
+    #[test]
+    fn test_reset_cold_start_write() {
+        let packet = Reset {
+            mode: ResetMode::ColdStart,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).unwrap();
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 4);
+        assert_eq!(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), 0x9A5D38B7);
     }
 
     #[test]

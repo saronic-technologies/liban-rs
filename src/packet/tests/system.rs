@@ -3,7 +3,7 @@ mod tests {
     use crate::packet::system::{
         Acknowledge, AcknowledgeResult, Request, BootMode,
         DeviceInformation, RestoreFactorySettings,
-        Reset, IpConfiguration
+        Reset, ResetMode, IpConfiguration
     };
     use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
@@ -74,7 +74,9 @@ mod tests {
 
     #[test]
     fn test_reset_packet_length() {
-        let packet = Reset {};
+        let packet = Reset {
+            mode: ResetMode::HotStart,
+        };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
         packet.write_le(&mut cursor).expect("Failed to serialize");
