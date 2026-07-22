@@ -4,19 +4,20 @@ mod tests {
         SystemState, UnixTime, Status, PositionStdDev, VelocityStdDev,
         EulerOrientationStdDev, RawSensors, SensorTemperature,
         GnssPositionVelocityTime, GnssOrientation, FormattedTime,
-        SystemStatus, FilterStatus, GnssPvtStatus, GnssOrientationStatus,
+        SystemStatus, FilterStatus, GnssFixType, GnssPvtStatus, GnssOrientationStatus,
     };
     use binrw::{BinRead, BinWrite};
+    use std::{f32::consts::{FRAC_PI_2, PI}, f64::consts::{FRAC_PI_4, FRAC_PI_6}};
 
     #[test]
     fn test_system_state_packet_length() {
         let packet = SystemState {
             system_status: SystemStatus::default(),
-            filter_status: FilterStatus::from(0x0001u16),
+            filter_status: FilterStatus::ORIENTATION_FILTER_INITIALISED,
             unix_time_seconds: 1640995200,
             microseconds: 123456,
-            latitude: 0.78539816,
-            longitude: 0.52359878,
+            latitude: FRAC_PI_4,
+            longitude: FRAC_PI_6,
             height: 100.5,
             velocity_north: 1.5,
             velocity_east: 2.5,
@@ -25,9 +26,9 @@ mod tests {
             body_acceleration_y: -0.01,
             body_acceleration_z: 9.81,
             g_force: 1.0,
-            roll: 0.26179939,
+            roll: 15.0_f32.to_radians(),
             pitch: 0.17453293,
-            heading: 1.5707963,
+            heading: FRAC_PI_2,
             angular_velocity_x: 0.001,
             angular_velocity_y: 0.002,
             angular_velocity_z: 0.003,
@@ -58,8 +59,9 @@ mod tests {
     #[test]
     fn test_status_packet_length() {
         let packet = Status {
-            system_status: SystemStatus::from(0b0001_0000_0010_0000u16), // gnss_failure + internal_data_logging_error
-            filter_status: FilterStatus::from(0b0000_0000_0000_0101u16), // orientation + heading
+            system_status: SystemStatus::GNSS_FAILURE | SystemStatus::INTERNAL_DATA_LOGGING_ERROR,
+            filter_status: FilterStatus::ORIENTATION_FILTER_INITIALISED
+                | FilterStatus::HEADING_INITIALISED,
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
@@ -152,11 +154,13 @@ mod tests {
     fn test_gnss_position_velocity_time_packet_length() {
         let packet = GnssPositionVelocityTime {
             gnss_id: 0,
-            status: GnssPvtStatus::from(0b0000_0110_0000_0010u16), // Fix3D + velocity_valid + time_valid
+            status: GnssPvtStatus::from_gnss_fix(GnssFixType::Fix3D)
+                | GnssPvtStatus::VELOCITY_VALID
+                | GnssPvtStatus::TIME_VALID,
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 500000,
-            latitude: 0.78539816,
-            longitude: 0.52359878,
+            latitude: FRAC_PI_4,
+            longitude: FRAC_PI_6,
             altitude: 100.5,
             position_std_dev_north: 0.5,
             position_std_dev_east: 0.6,
@@ -180,10 +184,10 @@ mod tests {
     fn test_gnss_orientation_packet_length() {
         let packet = GnssOrientation {
             gnss_id: 0,
-            status: GnssOrientationStatus::from(0x0007u16), // RtkFixed
+            status: GnssOrientationStatus::from_bits_retain(0x0007u16), // RtkFixed
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 500000,
-            azimuth: 1.5707963,
+            azimuth: FRAC_PI_2,
             azimuth_std_dev: 0.01,
             tilt: 0.0,
             tilt_std_dev: 0.02,
@@ -200,8 +204,9 @@ mod tests {
     #[test]
     fn test_system_state_round_trip() {
         let original = SystemState {
-            system_status: SystemStatus::from(0b0100_0000_0000_0001u16), // system_failure + gnss_antenna_disconnected
-            filter_status: FilterStatus::from(0b0000_0000_0000_1010u16), // navigation + utc_time
+            system_status: SystemStatus::SYSTEM_FAILURE | SystemStatus::GNSS_ANTENNA_DISCONNECTED,
+            filter_status: FilterStatus::NAVIGATION_FILTER_INITIALISED
+                | FilterStatus::UTC_TIME_INITIALISED,
             unix_time_seconds: 1700000000,
             microseconds: 999999,
             latitude: -0.34906585,
@@ -216,7 +221,7 @@ mod tests {
             g_force: 0.98,
             roll: -0.17453293,
             pitch: 0.08726646,
-            heading: 3.14159265,
+            heading: PI,
             angular_velocity_x: -0.01,
             angular_velocity_y: 0.005,
             angular_velocity_z: -0.002,
@@ -239,7 +244,9 @@ mod tests {
     fn test_gnss_pvt_round_trip() {
         let original = GnssPositionVelocityTime {
             gnss_id: 1,
-            status: GnssPvtStatus::from(0b0000_0110_0000_0111u16), // RtkFixed + velocity_valid + time_valid
+            status: GnssPvtStatus::from_gnss_fix(GnssFixType::RtkFixed)
+                | GnssPvtStatus::VELOCITY_VALID
+                | GnssPvtStatus::TIME_VALID,
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 123456,
             latitude: 0.6,
@@ -271,7 +278,7 @@ mod tests {
     fn test_gnss_orientation_round_trip() {
         let original = GnssOrientation {
             gnss_id: 0,
-            status: GnssOrientationStatus::from(0x0006u16), // RtkFloat
+            status: GnssOrientationStatus::from_bits_retain(0x0006u16), // RtkFloat
             posix_time_seconds: 1700000000,
             posix_time_microseconds: 654321,
             azimuth: 1.5,

@@ -1,4 +1,3 @@
-
 use crate::{Result, error::AnError};
 use binrw::{BinRead, BinResult, BinWrite, Endian};
 use serde::{Deserialize, Serialize};
@@ -10,6 +9,8 @@ pub mod receiver;
 pub mod satellite;
 pub mod state;
 pub mod system;
+
+use state::{FilterStatus, GnssPvtStatus, RawGnssStatus};
 
 /// ANPP packet identifier structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
@@ -308,7 +309,7 @@ impl Packet {
         match self {
             Packet::SystemState(p) => p
                 .filter_status
-                .utc_time_initialised()
+                .contains(FilterStatus::UTC_TIME_INITIALISED)
                 .then_some((p.unix_time_seconds, p.microseconds)),
             Packet::UnixTime(p) => Some((p.unix_time_seconds, p.microseconds)),
             Packet::FormattedTime(p) => p
@@ -317,13 +318,13 @@ impl Packet {
                 .map(|s| (s, p.microseconds)),
             Packet::RawGnss(p) => p
                 .status
-                .time_valid()
+                .contains(RawGnssStatus::TIME_VALID)
                 .then_some((p.unix_time_seconds, p.microseconds)),
             Packet::ExternalTime(p) => Some((p.unix_time_seconds, p.microseconds)),
             Packet::RawDvlData(p) => Some((p.unix_time_seconds, p.microseconds)),
             Packet::GnssPositionVelocityTime(p) => p
                 .status
-                .time_valid()
+                .contains(GnssPvtStatus::TIME_VALID)
                 .then_some((p.posix_time_seconds, p.posix_time_microseconds)),
             Packet::GnssOrientation(p) => Some((p.posix_time_seconds, p.posix_time_microseconds)),
             Packet::RawSatelliteData(p) => {
@@ -393,11 +394,11 @@ mod tests {
             heading: 0.0,
             tilt_std_dev: 0.0,
             heading_std_dev: 0.0,
-            status: RawGnssStatus::from(0),
+            status: RawGnssStatus::from_bits_retain(0),
         };
         assert_eq!(Packet::RawGnss(gnss.clone()).timestamp(), None);
 
-        gnss.status = RawGnssStatus::from(1 << 4);
+        gnss.status |= RawGnssStatus::TIME_VALID;
         assert_eq!(Packet::RawGnss(gnss).timestamp(), Some((1_700_000_000, 250)));
     }
 

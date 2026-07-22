@@ -1,4 +1,4 @@
-use liban::AnppParser;
+use liban::{AnppParser, FilterStatus, SystemStatus};
 use clap::Parser as ClapParser;
 use std::io::Read;
 use std::net::TcpStream;
@@ -70,15 +70,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     println!("\nGNSS STATUS:");
                     println!("   Fix Type: {:?}", p.filter_status.gnss_fix_type());
-                    println!("   Navigation Initialized: {}", p.filter_status.navigation_filter_initialised());
-                    println!("   Heading Initialized: {}", p.filter_status.heading_initialised());
+                    println!("   Navigation Initialized: {}", p.filter_status.contains(FilterStatus::NAVIGATION_FILTER_INITIALISED));
+                    println!("   Heading Initialized: {}", p.filter_status.contains(FilterStatus::HEADING_INITIALISED));
 
                     let mut warnings = Vec::new();
-                    if p.system_status.system_failure() { warnings.push("System Failure"); }
-                    if p.system_status.gnss_failure() { warnings.push("GNSS Failure"); }
-                    if p.system_status.internal_data_logging_error() { warnings.push("Data Logging Error"); }
-                    if p.system_status.high_voltage_alarm() { warnings.push("High Voltage"); }
-                    if p.system_status.gnss_antenna_disconnected() { warnings.push("GNSS Antenna Disconnected"); }
+                    if p.system_status.contains(SystemStatus::SYSTEM_FAILURE) { warnings.push("System Failure"); }
+                    if p.system_status.contains(SystemStatus::GNSS_FAILURE) { warnings.push("GNSS Failure"); }
+                    if p.system_status.contains(SystemStatus::INTERNAL_DATA_LOGGING_ERROR) { warnings.push("Data Logging Error"); }
+                    if p.system_status.contains(SystemStatus::HIGH_VOLTAGE_ALARM) { warnings.push("High Voltage"); }
+                    if p.system_status.contains(SystemStatus::GNSS_ANTENNA_DISCONNECTED) { warnings.push("GNSS Antenna Disconnected"); }
 
                     if !warnings.is_empty() {
                         println!("\nWARNINGS:");
@@ -101,10 +101,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("   GNSS Fix: {:?}", p.filter_status.gnss_fix_type());
 
                     let mut warnings = Vec::new();
-                    if p.system_status.system_failure() { warnings.push("System Failure"); }
-                    if p.system_status.gnss_failure() { warnings.push("GNSS Failure"); }
-                    if p.system_status.internal_data_logging_error() { warnings.push("Data Logging Error"); }
-                    if p.system_status.high_voltage_alarm() { warnings.push("High Voltage"); }
+                    if p.system_status.contains(SystemStatus::SYSTEM_FAILURE) { warnings.push("System Failure"); }
+                    if p.system_status.contains(SystemStatus::GNSS_FAILURE) { warnings.push("GNSS Failure"); }
+                    if p.system_status.contains(SystemStatus::INTERNAL_DATA_LOGGING_ERROR) { warnings.push("Data Logging Error"); }
+                    if p.system_status.contains(SystemStatus::HIGH_VOLTAGE_ALARM) { warnings.push("High Voltage"); }
 
                     if warnings.is_empty() {
                         println!("   All systems nominal");
