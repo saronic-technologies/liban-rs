@@ -157,6 +157,14 @@ macro_rules! define_packets {
                 }
             }
 
+            /// Get the name of the packet variant as a static string.
+            pub fn type_name(&self) -> &'static str {
+                match self {
+                    $( Packet::$variant(_) => stringify!($variant), )+
+                    Packet::Unsupported(_) => stringify!(Unsupported),
+                }
+            }
+
             /// Parse a packet from raw bytes
             pub(crate) fn from_bytes(packet_id: u8, data: &[u8]) -> Result<Self> {
                 use binrw::BinRead;
@@ -283,6 +291,53 @@ define_packets!(
 );
 
 impl Packet {
+    /// Return the timestamp carried by this packet as `(seconds, microseconds)`
+    /// since the Unix epoch, or `None` when the packet carries no timestamp.
+    ///
+    /// Exceptions to the plain `(seconds, microseconds)` reading:
+    /// - `SystemState`, `RawGnss`, and `GnssPositionVelocityTime` return `None`
+    ///   when the device flags their time fields invalid.
+    /// - `RawSatelliteData` reports nanoseconds, rounded here to the nearest
+    ///   microsecond; read its `nanoseconds` field directly when that precision
+    ///   matters.
+    /// - `RawSatelliteEphemeris` carries no sub-second field, so its
+    ///   microseconds value is always zero.
+    /// - `FormattedTime` can express times before unix epoch, but `u32` does not
+    ///   support negatives, so anything before 1970-01-01 is dropped.
+    pub fn timestamp(&self) -> Option<(u32, u32)> {
+        match self {
+            Packet::SystemState(p) => p
+                .filter_status
+                .utc_time_initialised()
+                .then_some((p.unix_time_seconds, p.microseconds)),
+            Packet::UnixTime(p) => Some((p.unix_time_seconds, p.microseconds)),
+            Packet::FormattedTime(p) => p
+                .unix_time_seconds()
+                .and_then(|t| u32::try_from(t).ok())
+                .map(|s| (s, p.microseconds)),
+            Packet::RawGnss(p) => p
+                .status
+                .time_valid()
+                .then_some((p.unix_time_seconds, p.microseconds)),
+            Packet::ExternalTime(p) => Some((p.unix_time_seconds, p.microseconds)),
+            Packet::RawDvlData(p) => Some((p.unix_time_seconds, p.microseconds)),
+            Packet::GnssPositionVelocityTime(p) => p
+                .status
+                .time_valid()
+                .then_some((p.posix_time_seconds, p.posix_time_microseconds)),
+            Packet::GnssOrientation(p) => Some((p.posix_time_seconds, p.posix_time_microseconds)),
+            Packet::RawSatelliteData(p) => {
+                let rounded_micros = (p.nanoseconds % 1_000_000_000 + 500) / 1000;
+                Some((
+                    p.unix_time + rounded_micros / 1_000_000,
+                    rounded_micros % 1_000_000,
+                ))
+            }
+            Packet::RawSatelliteEphemeris(p) => Some((p.unix_time, 0)),
+            _ => None,
+        }
+    }
+
     /// Convert packet to wire format bytes ready to send (with ANPP framing)
     pub fn to_bytes(&self) -> crate::Result<Vec<u8>> {
         match self {
@@ -308,6 +363,101 @@ impl Packet {
                 crate::protocol::AnppProtocol::get_packet_bytes(packet_id, &data)
             }
             _ => Err(crate::error::AnError::InvalidPacket("Cannot send read-only or unsupported packet types".to_string())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::packet::{
+        Packet,
+        satellite::{EphemerisData, SatelliteSystem},
+        state::{FormattedTime, RawGnss, RawGnssStatus, RawSatelliteData, RawSatelliteEphemeris},
+    };
+
+    #[test]
+    fn timestamp_gated_on_validity_bit() {
+        let mut gnss = RawGnss {
+            unix_time_seconds: 1_700_000_000,
+            microseconds: 250,
+            latitude: 0.0,
+            longitude: 0.0,
+            height: 0.0,
+            velocity_north: 0.0,
+            velocity_east: 0.0,
+            velocity_down: 0.0,
+            latitude_std_dev: 0.0,
+            longitude_std_dev: 0.0,
+            height_std_dev: 0.0,
+            tilt: 0.0,
+            heading: 0.0,
+            tilt_std_dev: 0.0,
+            heading_std_dev: 0.0,
+            status: RawGnssStatus::from(0),
+        };
+        assert_eq!(Packet::RawGnss(gnss.clone()).timestamp(), None);
+
+        gnss.status = RawGnssStatus::from(1 << 4);
+        assert_eq!(Packet::RawGnss(gnss).timestamp(), Some((1_700_000_000, 250)));
+    }
+
+    #[test]
+    fn timestamp_rounds_satellite_data_nanoseconds() {
+        let base = RawSatelliteData {
+            unix_time: 1_700_000_000,
+            nanoseconds: 1_500,
+            receiver_clock_offset: 0,
+            receiver_number: 0,
+            packet_number: 1,
+            total_packets: 1,
+            satellites: Vec::new(),
+        };
+        assert_eq!(Packet::RawSatelliteData(base.clone()).timestamp(), Some((1_700_000_000, 2)));
+
+        let carry = RawSatelliteData { nanoseconds: 999_999_750, ..base };
+        assert_eq!(Packet::RawSatelliteData(carry).timestamp(), Some((1_700_000_001, 0)));
+    }
+
+    #[test]
+    fn timestamp_satellite_ephemeris_has_zero_microseconds() {
+        let ephemeris = RawSatelliteEphemeris {
+            unix_time: 1_700_000_000,
+            satellite_system: SatelliteSystem::Gps,
+            prn: 1,
+            data: EphemerisData::Unknown,
+        };
+        assert_eq!(Packet::RawSatelliteEphemeris(ephemeris).timestamp(), Some((1_700_000_000, 0)));
+    }
+
+    #[test]
+    fn timestamp_formatted_time() {
+        let cases = [
+            // (year, month, day, hour, minute, second), (doy, dow), expected)
+            // negative time: None
+            ((1969, 12, 31, 23, 59, 59), (0, 3), None),
+            // epoch: OK
+            ((1970, 1, 1, 0, 0, 0), (0, 4), Some(0)),
+            // bad doy: None
+            ((1970, 1, 1, 0, 0, 1), (1, 4), None),
+            // bad dow: None
+            ((1970, 1, 1, 1, 0, 0), (0, 5), None),
+            // large date: OK
+            ((2100, 3, 1, 0, 0, 0), (59, 1), Some(4107542400)),
+        ];
+        for (i, ((year, month, month_day, hour, minute, second), (year_day, week_day), expected)) in cases.into_iter().enumerate() {
+            let microseconds = i as u32;
+            let packet = FormattedTime {
+                microseconds,
+                year,
+                year_day,
+                month,
+                month_day,
+                week_day,
+                hour,
+                minute,
+                second,
+            };
+            assert_eq!(Packet::FormattedTime(packet).timestamp(), expected.map(|ts| (ts, microseconds)));
         }
     }
 }

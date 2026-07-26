@@ -235,6 +235,38 @@ pub struct FormattedTime {
     pub second: u8,
 }
 
+impl FormattedTime {
+    /// Convert the time into a unix timestamp (ignoring micros).
+    /// If `year_day` or `month_day` don't match the values derived
+    /// from the date, return `None`.
+    pub fn unix_time_seconds(&self) -> Option<i64> {
+        // using our own impl since this is the only time conversion: not
+        // worth adding a new dependency, and std does not have anything suitable.
+        let year = self.year as i64 - (self.month <= 2) as i64;
+        let era = (if year >= 0 { year } else { year - 399 }) / 400;
+        let yoe = year - era * 400;
+        let dom = (153 * (self.month as i64 + if self.month > 2 { -3 } else { 9 }) + 2) / 5 + self.month_day as i64 - 1;
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + dom;
+        let day = era * 146097 + doe - 719468;
+
+        // Error if day of week does not match
+        if (day + 4).rem_euclid(7) != self.week_day as i64 {
+            return None;
+        }
+
+        // Error of day of year does not match. compute doy as diff from day of Jan 1 of self.year.
+        let check_year = self.year as i64 - 1;
+        let check_era = (if check_year >= 0 { check_year } else { check_year - 399 }) / 400;
+        let check_yoe = check_year - check_era * 400;
+        let check_day = check_era * 146097 + check_yoe * 365 + check_yoe / 4 - check_yoe / 100 - 719162;
+        if day - check_day != self.year_day as i64 {
+            return None;
+        }
+
+        Some(day * 86_400 + self.hour as i64 * 3_600 + self.minute as i64 * 60 + self.second as i64)
+    }
+}
+
 /// Status packet (Packet ID 23, Length 4) - Read only
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
