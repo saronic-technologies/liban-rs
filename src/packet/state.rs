@@ -3,7 +3,21 @@ use super::{
     satellite::{EphemerisData, ExtendedSatelliteEntry, RawSatelliteEntry, SatelliteSystem},
 };
 use binrw::{binrw, BinRead, BinWrite};
+use bitflags::{bitflags, parser::WriteHex};
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+macro_rules! hex_debug {
+    ($t:ty) => {
+        impl fmt::Debug for $t {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}(0x", stringify!($t))?;
+                self.bits().write_hex(&mut *f)?;
+                write!(f, ")")
+            }
+        }
+    };
+}
 
 // ===========================================================================
 // Enums and Status Types
@@ -83,100 +97,116 @@ impl From<u8> for InterferenceStatus {
     }
 }
 
-/// System status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct SystemStatus(u16);
-
-impl SystemStatus {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn system_failure(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn accelerometer_sensor_failure(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn gyroscope_sensor_failure(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn magnetometer_sensor_failure(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn pressure_sensor_failure(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn gnss_failure(&self) -> bool { self.0 & (1 << 5) != 0 }
-    pub fn accelerometer_over_range(&self) -> bool { self.0 & (1 << 6) != 0 }
-    pub fn gyroscope_over_range(&self) -> bool { self.0 & (1 << 7) != 0 }
-    pub fn magnetometer_over_range(&self) -> bool { self.0 & (1 << 8) != 0 }
-    pub fn pressure_over_range(&self) -> bool { self.0 & (1 << 9) != 0 }
-    pub fn minimum_temperature_alarm(&self) -> bool { self.0 & (1 << 10) != 0 }
-    pub fn maximum_temperature_alarm(&self) -> bool { self.0 & (1 << 11) != 0 }
-    pub fn internal_data_logging_error(&self) -> bool { self.0 & (1 << 12) != 0 }
-    pub fn high_voltage_alarm(&self) -> bool { self.0 & (1 << 13) != 0 }
-    pub fn gnss_antenna_disconnected(&self) -> bool { self.0 & (1 << 14) != 0 }
-    pub fn data_output_overflow_alarm(&self) -> bool { self.0 & (1 << 15) != 0 }
+bitflags! {
+    /// System status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct SystemStatus: u16 {
+        const SYSTEM_FAILURE = 1 << 0;
+        const ACCELEROMETER_SENSOR_FAILURE = 1 << 1;
+        const GYROSCOPE_SENSOR_FAILURE = 1 << 2;
+        const MAGNETOMETER_SENSOR_FAILURE = 1 << 3;
+        const PRESSURE_SENSOR_FAILURE = 1 << 4;
+        const GNSS_FAILURE = 1 << 5;
+        const ACCELEROMETER_OVER_RANGE = 1 << 6;
+        const GYROSCOPE_OVER_RANGE = 1 << 7;
+        const MAGNETOMETER_OVER_RANGE = 1 << 8;
+        const PRESSURE_OVER_RANGE = 1 << 9;
+        const MINIMUM_TEMPERATURE_ALARM = 1 << 10;
+        const MAXIMUM_TEMPERATURE_ALARM = 1 << 11;
+        const INTERNAL_DATA_LOGGING_ERROR = 1 << 12;
+        const HIGH_VOLTAGE_ALARM = 1 << 13;
+        const GNSS_ANTENNA_DISCONNECTED = 1 << 14;
+        const DATA_OUTPUT_OVERFLOW_ALARM = 1 << 15;
+    }
 }
 
-impl From<u16> for SystemStatus {
-    fn from(v: u16) -> Self { Self(v) }
+bitflags! {
+    /// Filter status flags
+    #[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct FilterStatus: u16 {
+        const ORIENTATION_FILTER_INITIALISED = 1 << 0;
+        const NAVIGATION_FILTER_INITIALISED = 1 << 1;
+        const HEADING_INITIALISED = 1 << 2;
+        const UTC_TIME_INITIALISED = 1 << 3;
+        /// Mask for the GNSS fix type in bits 4-6, decoded by [`Self::gnss_fix_type`]
+        const GNSS_FIX_TYPE_MASK = 0b0111 << Self::GNSS_FIX_TYPE_OFFSET;
+        const EVENT1_FLAG = 1 << 7;
+        const EVENT2_FLAG = 1 << 8;
+        const INTERNAL_GNSS_ENABLED = 1 << 9;
+        const DUAL_ANTENNA_HEADING_ACTIVE = 1 << 10;
+        const VELOCITY_HEADING_ENABLED = 1 << 11;
+        const ATMOSPHERIC_ALTITUDE_ENABLED = 1 << 12;
+        const EXTERNAL_POSITION_ACTIVE = 1 << 13;
+        const EXTERNAL_VELOCITY_ACTIVE = 1 << 14;
+        const EXTERNAL_HEADING_ACTIVE = 1 << 15;
+    }
 }
 
-/// Filter status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct FilterStatus(u16);
+hex_debug!(FilterStatus);
 
 impl FilterStatus {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn orientation_filter_initialised(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn navigation_filter_initialised(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn heading_initialised(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn utc_time_initialised(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn gnss_fix_type(&self) -> GnssFixType { GnssFixType::from(((self.0 >> 4) & 0x07) as u8) }
-    pub fn event1_flag(&self) -> bool { self.0 & (1 << 7) != 0 }
-    pub fn event2_flag(&self) -> bool { self.0 & (1 << 8) != 0 }
-    pub fn internal_gnss_enabled(&self) -> bool { self.0 & (1 << 9) != 0 }
-    pub fn dual_antenna_heading_active(&self) -> bool { self.0 & (1 << 10) != 0 }
-    pub fn velocity_heading_enabled(&self) -> bool { self.0 & (1 << 11) != 0 }
-    pub fn atmospheric_altitude_enabled(&self) -> bool { self.0 & (1 << 12) != 0 }
-    pub fn external_position_active(&self) -> bool { self.0 & (1 << 13) != 0 }
-    pub fn external_velocity_active(&self) -> bool { self.0 & (1 << 14) != 0 }
-    pub fn external_heading_active(&self) -> bool { self.0 & (1 << 15) != 0 }
+    const GNSS_FIX_TYPE_OFFSET: u32 = 4;
+
+    pub fn gnss_fix_type(&self) -> GnssFixType { GnssFixType::from((self.intersection(Self::GNSS_FIX_TYPE_MASK).bits() >> Self::GNSS_FIX_TYPE_OFFSET) as u8) }
 }
 
-impl From<u16> for FilterStatus {
-    fn from(v: u16) -> Self { Self(v) }
+bitflags! {
+    /// GNSS PVT status flags
+    #[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct GnssPvtStatus: u16 {
+        /// Mask for the GNSS fix type in bits 0-2, decoded by [`Self::gnss_fix_status`]
+        const GNSS_FIX_TYPE_MASK = 0b0111 << Self::GNSS_FIX_TYPE_OFFSET;
+        /// Mask for the spoofing status in bits 3-5, decoded by [`Self::spoofing_status`]
+        const SPOOFING_STATUS_MASK = 0b0111 << Self::SPOOFING_STATUS_OFFSET;
+        /// Mask for the interference status in bits 6-8, decoded by [`Self::interference_status`]
+        const INTERFERENCE_STATUS_MASK = 0b0111 << Self::INTERFERENCE_STATUS_OFFSET;
+        const VELOCITY_VALID = 1 << 9;
+        const TIME_VALID = 1 << 10;
+        const ANTENNA_DISCONNECTED = 1 << 11;
+        const ANTENNA_SHORT = 1 << 12;
+        const GNSS_FAILURE = 1 << 13;
+    }
 }
 
-/// GNSS PVT status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct GnssPvtStatus(u16);
+hex_debug!(GnssPvtStatus);
 
 impl GnssPvtStatus {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.0 & 0x07) as u8) }
-    pub fn spoofing_status(&self) -> SpoofingStatus { SpoofingStatus::from(((self.0 >> 3) & 0x07) as u8) }
-    pub fn interference_status(&self) -> InterferenceStatus { InterferenceStatus::from(((self.0 >> 6) & 0x07) as u8) }
-    pub fn velocity_valid(&self) -> bool { self.0 & (1 << 9) != 0 }
-    pub fn time_valid(&self) -> bool { self.0 & (1 << 10) != 0 }
-    pub fn antenna_disconnected(&self) -> bool { self.0 & (1 << 11) != 0 }
-    pub fn antenna_short(&self) -> bool { self.0 & (1 << 12) != 0 }
-    pub fn gnss_failure(&self) -> bool { self.0 & (1 << 13) != 0 }
+    const GNSS_FIX_TYPE_OFFSET: u32 = 0;
+    const SPOOFING_STATUS_OFFSET: u32 = 3;
+    const INTERFERENCE_STATUS_OFFSET: u32 = 6;
+
+    pub fn from_gnss_fix(fix: GnssFixType) -> Self { Self::from_bits_retain((fix as u16) << Self::GNSS_FIX_TYPE_OFFSET) }
+    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.intersection(Self::GNSS_FIX_TYPE_MASK).bits() >> Self::GNSS_FIX_TYPE_OFFSET) as u8) }
+    pub fn spoofing_status(&self) -> SpoofingStatus { SpoofingStatus::from((self.intersection(Self::SPOOFING_STATUS_MASK).bits() >> Self::SPOOFING_STATUS_OFFSET) as u8) }
+    pub fn interference_status(&self) -> InterferenceStatus { InterferenceStatus::from((self.intersection(Self::INTERFERENCE_STATUS_MASK).bits() >> Self::INTERFERENCE_STATUS_OFFSET) as u8) }
 }
 
-impl From<u16> for GnssPvtStatus {
-    fn from(v: u16) -> Self { Self(v) }
+bitflags! {
+    /// GNSS Orientation status flags
+    #[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct GnssOrientationStatus: u16 {
+        /// Mask for the GNSS fix type in bits 0-2, decoded by [`Self::gnss_fix_status`]
+        const GNSS_FIX_TYPE_MASK = 0b0111 << Self::GNSS_FIX_TYPE_OFFSET;
+        const ANTENNA_DISCONNECTED = 1 << 3;
+        const ANTENNA_SHORT = 1 << 4;
+        const GNSS_FAILURE = 1 << 5;
+        /// Mask for the spoofing status in bits 6-8, decoded by [`Self::spoofing_status`]
+        const SPOOFING_STATUS_MASK = 0b0111 << Self::SPOOFING_STATUS_OFFSET;
+        /// Mask for the interference status in bits 9-11, decoded by [`Self::interference_status`]
+        const INTERFERENCE_STATUS_MASK = 0b0111 << Self::INTERFERENCE_STATUS_OFFSET;
+    }
 }
 
-/// GNSS Orientation status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct GnssOrientationStatus(u16);
+hex_debug!(GnssOrientationStatus);
 
 impl GnssOrientationStatus {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.0 & 0x07) as u8) }
-    pub fn antenna_disconnected(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn antenna_short(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn gnss_failure(&self) -> bool { self.0 & (1 << 5) != 0 }
-    pub fn spoofing_status(&self) -> SpoofingStatus { SpoofingStatus::from(((self.0 >> 6) & 0x07) as u8) }
-    pub fn interference_status(&self) -> InterferenceStatus { InterferenceStatus::from(((self.0 >> 9) & 0x07) as u8) }
-}
+    const GNSS_FIX_TYPE_OFFSET: u32 = 0;
+    const SPOOFING_STATUS_OFFSET: u32 = 6;
+    const INTERFERENCE_STATUS_OFFSET: u32 = 9;
 
-impl From<u16> for GnssOrientationStatus {
-    fn from(v: u16) -> Self { Self(v) }
+    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.intersection(Self::GNSS_FIX_TYPE_MASK).bits() >> Self::GNSS_FIX_TYPE_OFFSET) as u8) }
+    pub fn spoofing_status(&self) -> SpoofingStatus { SpoofingStatus::from((self.intersection(Self::SPOOFING_STATUS_MASK).bits() >> Self::SPOOFING_STATUS_OFFSET) as u8) }
+    pub fn interference_status(&self) -> InterferenceStatus { InterferenceStatus::from((self.intersection(Self::INTERFERENCE_STATUS_MASK).bits() >> Self::INTERFERENCE_STATUS_OFFSET) as u8) }
 }
 
 // ===========================================================================
@@ -187,7 +217,11 @@ impl From<u16> for GnssOrientationStatus {
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct SystemState {
+    #[br(map = SystemStatus::from_bits_retain)]
+    #[bw(map = |x: &SystemStatus| x.bits())]
     pub system_status: SystemStatus,
+    #[br(map = FilterStatus::from_bits_retain)]
+    #[bw(map = |x: &FilterStatus| x.bits())]
     pub filter_status: FilterStatus,
     pub unix_time_seconds: u32,
     pub microseconds: u32,
@@ -271,7 +305,11 @@ impl FormattedTime {
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct Status {
+    #[br(map = SystemStatus::from_bits_retain)]
+    #[bw(map = |x: &SystemStatus| x.bits())]
     pub system_status: SystemStatus,
+    #[br(map = FilterStatus::from_bits_retain)]
+    #[bw(map = |x: &FilterStatus| x.bits())]
     pub filter_status: FilterStatus,
 }
 
@@ -318,30 +356,33 @@ pub struct QuaternionOrientationStdDev {
     pub q3_std_dev: f32,
 }
 
-/// Raw GNSS status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct RawGnssStatus(u16);
-
-impl RawGnssStatus {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.0 & 0x07) as u8) }
-    pub fn doppler_velocity_valid(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn time_valid(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn external_gnss(&self) -> bool { self.0 & (1 << 5) != 0 }
-    pub fn tilt_valid(&self) -> bool { self.0 & (1 << 6) != 0 }
-    pub fn heading_valid(&self) -> bool { self.0 & (1 << 7) != 0 }
-    pub fn floating_ambiguity_heading(&self) -> bool { self.0 & (1 << 8) != 0 }
-    pub fn antenna_1_disconnected(&self) -> bool { self.0 & (1 << 10) != 0 }
-    pub fn antenna_2_disconnected(&self) -> bool { self.0 & (1 << 11) != 0 }
-    pub fn antenna_1_short(&self) -> bool { self.0 & (1 << 12) != 0 }
-    pub fn antenna_2_short(&self) -> bool { self.0 & (1 << 13) != 0 }
-    pub fn gnss1_failure(&self) -> bool { self.0 & (1 << 14) != 0 }
-    pub fn gnss2_failure(&self) -> bool { self.0 & (1 << 15) != 0 }
+bitflags! {
+    /// Raw GNSS status flags
+    #[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct RawGnssStatus: u16 {
+        /// Mask for the GNSS fix type in bits 0-2, decoded by [`Self::gnss_fix_status`]
+        const GNSS_FIX_TYPE_MASK = 0b0111 << Self::GNSS_FIX_TYPE_OFFSET;
+        const DOPPLER_VELOCITY_VALID = 1 << 3;
+        const TIME_VALID = 1 << 4;
+        const EXTERNAL_GNSS = 1 << 5;
+        const TILT_VALID = 1 << 6;
+        const HEADING_VALID = 1 << 7;
+        const FLOATING_AMBIGUITY_HEADING = 1 << 8;
+        const ANTENNA_1_DISCONNECTED = 1 << 10;
+        const ANTENNA_2_DISCONNECTED = 1 << 11;
+        const ANTENNA_1_SHORT = 1 << 12;
+        const ANTENNA_2_SHORT = 1 << 13;
+        const GNSS1_FAILURE = 1 << 14;
+        const GNSS2_FAILURE = 1 << 15;
+    }
 }
 
-impl From<u16> for RawGnssStatus {
-    fn from(v: u16) -> Self { Self(v) }
+hex_debug!(RawGnssStatus);
+
+impl RawGnssStatus {
+    const GNSS_FIX_TYPE_OFFSET: u32 = 0;
+
+    pub fn gnss_fix_status(&self) -> GnssFixType { GnssFixType::from((self.intersection(Self::GNSS_FIX_TYPE_MASK).bits() >> Self::GNSS_FIX_TYPE_OFFSET) as u8) }
 }
 
 /// Raw sensors packet (Packet ID 28, Length 48) - Read only
@@ -414,6 +455,8 @@ pub struct RawGnss {
     pub tilt_std_dev: f32,
     /// Heading standard deviation in radians
     pub heading_std_dev: f32,
+    #[br(map = RawGnssStatus::from_bits_retain)]
+    #[bw(map = |x: &RawGnssStatus| x.bits())]
     pub status: RawGnssStatus,
 }
 
@@ -796,22 +839,16 @@ pub struct RawSatelliteEphemeris {
     pub data: EphemerisData,
 }
 
-/// DVL status flags bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct DvlStatus(u32);
-
-impl DvlStatus {
-    pub fn raw(&self) -> u32 { self.0 }
-    pub fn bottom_velocity_valid(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn water_velocity_valid(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn temperature_valid(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn depth_valid(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn altitude_valid(&self) -> bool { self.0 & (1 << 4) != 0 }
-}
-
-impl From<u32> for DvlStatus {
-    fn from(v: u32) -> Self { Self(v) }
+bitflags! {
+    /// DVL status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct DvlStatus: u32 {
+        const BOTTOM_VELOCITY_VALID = 1 << 0;
+        const WATER_VELOCITY_VALID = 1 << 1;
+        const TEMPERATURE_VALID = 1 << 2;
+        const DEPTH_VALID = 1 << 3;
+        const ALTITUDE_VALID = 1 << 4;
+    }
 }
 
 /// External odometer packet (Packet ID 67, Length 13) - Write only
@@ -832,23 +869,17 @@ pub struct ExternalOdometer {
     pub reversing_detection_supported: bool,
 }
 
-/// Air data flags bitfield for ExternalAirData
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct AirDataFlags(u8);
-
-impl AirDataFlags {
-    pub fn raw(&self) -> u8 { self.0 }
-    pub fn barometric_altitude_valid(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn airspeed_valid(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn barometric_altitude_over_range(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn airspeed_over_range(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn barometric_altitude_sensor_failure(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn airspeed_sensor_failure(&self) -> bool { self.0 & (1 << 5) != 0 }
-}
-
-impl From<u8> for AirDataFlags {
-    fn from(v: u8) -> Self { Self(v) }
+bitflags! {
+    /// Air data flags for ExternalAirData
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct AirDataFlags: u8 {
+        const BAROMETRIC_ALTITUDE_VALID = 1 << 0;
+        const AIRSPEED_VALID = 1 << 1;
+        const BAROMETRIC_ALTITUDE_OVER_RANGE = 1 << 2;
+        const AIRSPEED_OVER_RANGE = 1 << 3;
+        const BAROMETRIC_ALTITUDE_SENSOR_FAILURE = 1 << 4;
+        const AIRSPEED_SENSOR_FAILURE = 1 << 5;
+    }
 }
 
 /// External air data packet (Packet ID 68, Length 25) - Read/Write
@@ -868,6 +899,8 @@ pub struct ExternalAirData {
     /// Airspeed standard deviation in m/s
     pub airspeed_std_dev: f32,
     /// Validity and sensor status flags
+    #[br(map = AirDataFlags::from_bits_retain)]
+    #[bw(map = |x: &AirDataFlags| x.bits())]
     pub flags: AirDataFlags,
 }
 
@@ -891,6 +924,8 @@ pub struct GnssReceiverInformation {
 pub struct RawDvlData {
     pub unix_time_seconds: u32,
     pub microseconds: u32,
+    #[br(map = DvlStatus::from_bits_retain)]
+    #[bw(map = |x: &DvlStatus| x.bits())]
     pub status: DvlStatus,
     /// Bottom velocity X in m/s
     pub bottom_velocity_x: f32,
@@ -918,25 +953,19 @@ pub struct RawDvlData {
     pub temperature: f32,
 }
 
-/// North seeking initialisation status flags bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct NorthSeekingFlags(u16);
-
-impl NorthSeekingFlags {
-    pub fn raw(&self) -> u16 { self.0 }
-    pub fn initialisation_complete(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn cannot_start_position_unknown(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn solution_out_of_range(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn solution_non_orthogonal(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn restarted_excessive_movement(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn restarted_latitude_change(&self) -> bool { self.0 & (1 << 5) != 0 }
-    pub fn restarted_lever_arm_change(&self) -> bool { self.0 & (1 << 6) != 0 }
-    pub fn latitude_check_failed(&self) -> bool { self.0 & (1 << 7) != 0 }
-}
-
-impl From<u16> for NorthSeekingFlags {
-    fn from(v: u16) -> Self { Self(v) }
+bitflags! {
+    /// North seeking initialisation status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct NorthSeekingFlags: u16 {
+        const INITIALISATION_COMPLETE = 1 << 0;
+        const CANNOT_START_POSITION_UNKNOWN = 1 << 1;
+        const SOLUTION_OUT_OF_RANGE = 1 << 2;
+        const SOLUTION_NON_ORTHOGONAL = 1 << 3;
+        const RESTARTED_EXCESSIVE_MOVEMENT = 1 << 4;
+        const RESTARTED_LATITUDE_CHANGE = 1 << 5;
+        const RESTARTED_LEVER_ARM_CHANGE = 1 << 6;
+        const LATITUDE_CHECK_FAILED = 1 << 7;
+    }
 }
 
 /// North seeking initialisation status packet (Packet ID 71, Length 28) - Read only
@@ -945,6 +974,8 @@ impl From<u16> for NorthSeekingFlags {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NorthSeekingInitialisationStatus {
     /// Initialisation status flags
+    #[br(map = NorthSeekingFlags::from_bits_retain)]
+    #[bw(map = |x: &NorthSeekingFlags| x.bits())]
     pub flags: NorthSeekingFlags,
     /// Firmware version
     pub version: u16,
@@ -1089,6 +1120,8 @@ pub struct GnssPositionVelocityTime {
     #[br(temp)]
     #[bw(calc = 0u8)]
     _reserved: u8,
+    #[br(map = GnssPvtStatus::from_bits_retain)]
+    #[bw(map = |x: &GnssPvtStatus| x.bits())]
     pub status: GnssPvtStatus,
     pub posix_time_seconds: u32,
     pub posix_time_microseconds: u32,
@@ -1116,6 +1149,8 @@ pub struct GnssOrientation {
     #[br(temp)]
     #[bw(calc = 0u8)]
     _reserved: u8,
+    #[br(map = GnssOrientationStatus::from_bits_retain)]
+    #[bw(map = |x: &GnssOrientationStatus| x.bits())]
     pub status: GnssOrientationStatus,
     pub posix_time_seconds: u32,
     pub posix_time_microseconds: u32,
@@ -1133,44 +1168,68 @@ mod tests {
 
     #[test]
     fn test_system_status_accessors() {
-        let status = SystemStatus::from(0b0100_0000_0010_0001u16); // bits 0, 5, 14
-        assert!(status.system_failure());
-        assert!(status.gnss_failure());
-        assert!(status.gnss_antenna_disconnected());
-        assert!(!status.accelerometer_sensor_failure());
-        assert_eq!(status, SystemStatus::from(status.raw()));
+        let status = SystemStatus::from_bits_retain(0b0100_0000_0010_0001u16); // bits 0, 5, 14
+        assert!(status.contains(SystemStatus::SYSTEM_FAILURE));
+        assert!(status.contains(SystemStatus::GNSS_FAILURE));
+        assert!(status.contains(SystemStatus::GNSS_ANTENNA_DISCONNECTED));
+        assert!(!status.contains(SystemStatus::ACCELEROMETER_SENSOR_FAILURE));
+        assert_eq!(status, SystemStatus::from_bits_retain(status.bits()));
     }
 
     #[test]
     fn test_filter_status_accessors() {
         // bits 0, 2, 9 + gnss_fix_type = 7 (bits 4-6)
-        let status = FilterStatus::from(0b0000_0010_0111_0101u16);
-        assert!(status.orientation_filter_initialised());
-        assert!(status.heading_initialised());
-        assert!(status.internal_gnss_enabled());
+        let status = FilterStatus::from_bits_retain(0b0000_0010_0111_0101u16);
+        assert!(status.contains(FilterStatus::ORIENTATION_FILTER_INITIALISED));
+        assert!(status.contains(FilterStatus::HEADING_INITIALISED));
+        assert!(status.contains(FilterStatus::INTERNAL_GNSS_ENABLED));
         assert_eq!(status.gnss_fix_type(), GnssFixType::RtkFixed);
-        assert_eq!(status, FilterStatus::from(status.raw()));
+        assert_eq!(status, FilterStatus::from_bits_retain(status.bits()));
     }
 
     #[test]
     fn test_gnss_pvt_status_accessors() {
-        let status = GnssPvtStatus::from(0u16);
+        let status = GnssPvtStatus::from_bits_retain(0u16);
         assert_eq!(status.gnss_fix_status(), GnssFixType::NoFix);
-        assert!(!status.velocity_valid());
-        let status = GnssPvtStatus::from(0b0000_0110_0000_1010u16); // fix=2, spoofing=1, velocity_valid
+        assert!(!status.contains(GnssPvtStatus::VELOCITY_VALID));
+        let status = GnssPvtStatus::from_bits_retain(0b0000_0110_0000_1010u16); // fix=2, spoofing=1, velocity_valid
         assert_eq!(status.gnss_fix_status(), GnssFixType::Fix3D);
         assert_eq!(status.spoofing_status(), SpoofingStatus::None);
-        assert!(status.velocity_valid());
-        assert_eq!(status, GnssPvtStatus::from(status.raw()));
+        assert!(status.contains(GnssPvtStatus::VELOCITY_VALID));
+        assert_eq!(status, GnssPvtStatus::from_bits_retain(status.bits()));
     }
 
     #[test]
     fn test_gnss_orientation_status_accessors() {
-        let status = GnssOrientationStatus::from(0b0000_0000_0010_0110u16); // fix=6, antenna_disconnected
+        let status = GnssOrientationStatus::from_bits_retain(0b0000_0000_0010_0110u16); // fix=6, gnss_failure
         assert_eq!(status.gnss_fix_status(), GnssFixType::RtkFloat);
-        assert!(!status.antenna_disconnected()); // bit 3 not set
-        assert!(status.gnss_failure()); // bit 5
-        assert_eq!(status, GnssOrientationStatus::from(status.raw()));
+        assert!(!status.contains(GnssOrientationStatus::ANTENNA_DISCONNECTED)); // bit 3 not set
+        assert!(status.contains(GnssOrientationStatus::GNSS_FAILURE)); // bit 5
+        assert_eq!(status, GnssOrientationStatus::from_bits_retain(status.bits()));
+    }
+
+    #[test]
+    fn test_gnss_orientation_status_serde_round_trip() {
+        // ANTENNA_SHORT | GNSS_FAILURE, GnssFixType::PppFix, SpoofingStatus::DetectedAndMitigated
+        let status = GnssOrientationStatus::from_bits_retain(0x00F5u16);
+        let serialized = serde_json::to_string(&status).unwrap();
+        assert_eq!(serialized, "\"ANTENNA_SHORT | GNSS_FAILURE | 0xc5\"");
+        let deserialized: GnssOrientationStatus = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, status);
+
+        // ANTENNA_SHORT | GNSS_FAILURE, GnssFixType::RtkFixed, SpoofingStatus::DetectedAndMitigated
+        let status = GnssOrientationStatus::from_bits_retain(0x00F7u16);
+        let serialized = serde_json::to_string(&status).unwrap();
+        assert_eq!(serialized, "\"GNSS_FIX_TYPE_MASK | ANTENNA_SHORT | GNSS_FAILURE | 0xc0\"");
+        let deserialized: GnssOrientationStatus = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, status);
+    }
+
+    #[test]
+    fn test_gnss_orientation_status_debug() {
+        let status = GnssOrientationStatus::from_bits_retain(0x00F5u16); // PppFix
+        let debug = format!("{status:?}");
+        assert_eq!(debug, "GnssOrientationStatus(0xf5)");
     }
 
     #[test]
@@ -1179,7 +1238,9 @@ mod tests {
 
         let system_state = SystemState {
             system_status: SystemStatus::default(),
-            filter_status: FilterStatus::from(0b0000_0000_0000_0111u16), // bits 0,1,2
+            filter_status: FilterStatus::ORIENTATION_FILTER_INITIALISED
+                | FilterStatus::NAVIGATION_FILTER_INITIALISED
+                | FilterStatus::HEADING_INITIALISED,
             unix_time_seconds: 1640995200,
             microseconds: 123456,
             latitude: PI / 4.0,

@@ -1,5 +1,6 @@
 use crate::packet::{HasPacketId, PacketKind, gpio::{AuxiliaryFunction, GpioFunction, GpioVoltage}};
 use binrw::{binrw, BinRead, BinWrite};
+use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -463,49 +464,47 @@ pub struct DualAntennaConfiguration {
     pub manual_offset_z: f32,
 }
 
-/// GNSS frequency enable bitfield for GnssConfiguration
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct GnssFrequencies(u64);
-
-impl GnssFrequencies {
-    pub fn raw(&self) -> u64 { self.0 }
-    pub fn gps_l1ca(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn gps_l1c(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn gps_l1p(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn gps_l2c(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn gps_l2p(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn gps_l2m(&self) -> bool { self.0 & (1 << 5) != 0 }
-    pub fn gps_l5(&self) -> bool { self.0 & (1 << 6) != 0 }
-    pub fn glonass_g1ca(&self) -> bool { self.0 & (1 << 7) != 0 }
-    pub fn glonass_g1p(&self) -> bool { self.0 & (1 << 8) != 0 }
-    pub fn glonass_l1oc(&self) -> bool { self.0 & (1 << 9) != 0 }
-    pub fn glonass_l1sc(&self) -> bool { self.0 & (1 << 10) != 0 }
-    pub fn glonass_g2ca(&self) -> bool { self.0 & (1 << 11) != 0 }
-    pub fn glonass_g2p(&self) -> bool { self.0 & (1 << 12) != 0 }
-    pub fn glonass_l2oc(&self) -> bool { self.0 & (1 << 13) != 0 }
-    pub fn glonass_l2sc(&self) -> bool { self.0 & (1 << 14) != 0 }
-    pub fn glonass_l3oc(&self) -> bool { self.0 & (1 << 15) != 0 }
-    pub fn glonass_l3sc(&self) -> bool { self.0 & (1 << 16) != 0 }
-    pub fn beidou_b1(&self) -> bool { self.0 & (1 << 17) != 0 }
-    pub fn beidou_b2(&self) -> bool { self.0 & (1 << 18) != 0 }
-    pub fn beidou_b3(&self) -> bool { self.0 & (1 << 19) != 0 }
-    pub fn galileo_e1(&self) -> bool { self.0 & (1 << 20) != 0 }
-    pub fn galileo_e5a(&self) -> bool { self.0 & (1 << 21) != 0 }
-    pub fn galileo_e5b(&self) -> bool { self.0 & (1 << 22) != 0 }
-    pub fn galileo_e5ab(&self) -> bool { self.0 & (1 << 23) != 0 }
-    pub fn galileo_e6(&self) -> bool { self.0 & (1 << 24) != 0 }
-    pub fn qzss_l1ca(&self) -> bool { self.0 & (1 << 25) != 0 }
-    pub fn qzss_l1saif(&self) -> bool { self.0 & (1 << 26) != 0 }
-    pub fn qzss_l1c(&self) -> bool { self.0 & (1 << 27) != 0 }
-    pub fn qzss_l2c(&self) -> bool { self.0 & (1 << 28) != 0 }
-    pub fn qzss_l5(&self) -> bool { self.0 & (1 << 29) != 0 }
-    pub fn qzss_lex(&self) -> bool { self.0 & (1 << 30) != 0 }
-    pub fn sbas_l1ca(&self) -> bool { self.0 & (1 << 31) != 0 }
-    pub fn sbas_l5(&self) -> bool { self.0 & (1 << 32) != 0 }
-    pub fn navic_l5(&self) -> bool { self.0 & (1 << 33) != 0 }
-    pub fn navic_s1(&self) -> bool { self.0 & (1 << 34) != 0 }
-    pub fn beidou_b2a(&self) -> bool { self.0 & (1 << 35) != 0 }
+bitflags! {
+    /// GNSS frequency enable flags for GnssConfiguration
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct GnssFrequencies: u64 {
+        const GPS_L1CA = 1 << 0;
+        const GPS_L1C = 1 << 1;
+        const GPS_L1P = 1 << 2;
+        const GPS_L2C = 1 << 3;
+        const GPS_L2P = 1 << 4;
+        const GPS_L2M = 1 << 5;
+        const GPS_L5 = 1 << 6;
+        const GLONASS_G1CA = 1 << 7;
+        const GLONASS_G1P = 1 << 8;
+        const GLONASS_L1OC = 1 << 9;
+        const GLONASS_L1SC = 1 << 10;
+        const GLONASS_G2CA = 1 << 11;
+        const GLONASS_G2P = 1 << 12;
+        const GLONASS_L2OC = 1 << 13;
+        const GLONASS_L2SC = 1 << 14;
+        const GLONASS_L3OC = 1 << 15;
+        const GLONASS_L3SC = 1 << 16;
+        const BEIDOU_B1 = 1 << 17;
+        const BEIDOU_B2 = 1 << 18;
+        const BEIDOU_B3 = 1 << 19;
+        const GALILEO_E1 = 1 << 20;
+        const GALILEO_E5A = 1 << 21;
+        const GALILEO_E5B = 1 << 22;
+        const GALILEO_E5AB = 1 << 23;
+        const GALILEO_E6 = 1 << 24;
+        const QZSS_L1CA = 1 << 25;
+        const QZSS_L1SAIF = 1 << 26;
+        const QZSS_L1C = 1 << 27;
+        const QZSS_L2C = 1 << 28;
+        const QZSS_L5 = 1 << 29;
+        const QZSS_LEX = 1 << 30;
+        const SBAS_L1CA = 1 << 31;
+        const SBAS_L5 = 1 << 32;
+        const NAVIC_L5 = 1 << 33;
+        const NAVIC_S1 = 1 << 34;
+        const BEIDOU_B2A = 1 << 35;
+    }
 }
 
 /// GNSS configuration packet (Packet ID 197, Length 85) - Read/Write
@@ -518,6 +517,8 @@ pub struct GnssConfiguration {
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
     /// GNSS frequencies bitfield; each bit enables tracking of a specific constellation frequency
+    #[br(map = GnssFrequencies::from_bits_retain)]
+    #[bw(map = |x: &GnssFrequencies| x.bits())]
     pub gnss_frequencies: GnssFrequencies,
     #[br(temp)]
     #[bw(calc = [0u8; 76])]
@@ -598,4 +599,4 @@ pub struct CanConfiguration {
 
 #[cfg(test)]
 #[path = "tests/config.rs"]
-mod tests;
+mod config_length_tests;

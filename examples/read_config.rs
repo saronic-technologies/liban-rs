@@ -96,8 +96,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         while let Some(packet) = parser.consume(input) {
             input = &[];
             match packet {
-                Packet::DeviceInformation(info) => {
-                    if received_configs.insert("DeviceInformation") {
+                Packet::DeviceInformation(info)
+                    if received_configs.insert("DeviceInformation") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("DEVICE INFORMATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -108,10 +108,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                  info.serial_number_1, info.serial_number_2, info.serial_number_3);
                         println!();
                     }
-                }
 
-                Packet::FilterOptions(opts) => {
-                    if received_configs.insert("FilterOptions") {
+                Packet::FilterOptions(opts)
+                    if received_configs.insert("FilterOptions") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("FILTER OPTIONS");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -124,10 +123,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("  Motion Analysis Enabled:      {}", opts.motion_analysis_enabled);
                         println!();
                     }
-                }
 
-                Packet::InstallationAlignment(align) => {
-                    if received_configs.insert("InstallationAlignment") {
+                Packet::InstallationAlignment(align)
+                    if received_configs.insert("InstallationAlignment") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("INSTALLATION ALIGNMENT");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -150,10 +148,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                  align.external_data_offset.z);
                         println!();
                     }
-                }
 
-                Packet::IpConfiguration(ip_config) => {
-                    if received_configs.insert("IpConfiguration") {
+                Packet::IpConfiguration(ip_config)
+                    if received_configs.insert("IpConfiguration") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("IP CONFIGURATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -181,10 +178,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                  ip_config.dns_server & 0xFF);
                         println!();
                     }
-                }
 
-                Packet::PacketTimerPeriod(timer) => {
-                    if received_configs.insert("PacketTimerPeriod") {
+                Packet::PacketTimerPeriod(timer)
+                    if received_configs.insert("PacketTimerPeriod") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("PACKET TIMER PERIOD");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -193,10 +189,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("  Packet Timer Period:  {:?}", timer.packet_timer_period);
                         println!();
                     }
-                }
 
-                Packet::PacketsPeriod(periods) => {
-                    if received_configs.insert("PacketsPeriod") {
+                Packet::PacketsPeriod(periods)
+                    if received_configs.insert("PacketsPeriod") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("PACKETS PERIOD");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -208,10 +203,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         println!();
                     }
-                }
 
-                Packet::OdometerConfiguration(odom) => {
-                    if received_configs.insert("OdometerConfiguration") {
+                Packet::OdometerConfiguration(odom)
+                    if received_configs.insert("OdometerConfiguration") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("ODOMETER CONFIGURATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -220,10 +214,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("  Pulse Length:                {:.3} m", odom.pulse_length);
                         println!();
                     }
-                }
 
-                Packet::ReferencePointOffsets(offsets) => {
-                    if received_configs.insert("ReferencePointOffsets") {
+                Packet::ReferencePointOffsets(offsets)
+                    if received_configs.insert("ReferencePointOffsets") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("REFERENCE POINT OFFSETS");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -238,10 +231,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                  offsets.heave_point_4.x, offsets.heave_point_4.y, offsets.heave_point_4.z);
                         println!();
                     }
-                }
 
-                Packet::IpDataportsConfiguration(dataports) => {
-                    if received_configs.insert("IpDataportsConfiguration") {
+                Packet::IpDataportsConfiguration(dataports)
+                    if received_configs.insert("IpDataportsConfiguration") => {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("IP DATAPORTS CONFIGURATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -257,7 +249,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         println!();
                     }
-                }
 
                 Packet::Acknowledge(ack) => {
                     println!("  Acknowledge: {:?} -> {:?}", ack.acknowledged_packet, ack.result);

@@ -222,7 +222,7 @@ mod tests {
 
         // Create a request packet manually
         let packet_data = Request { requested_packet: PacketKind::SystemState };
-        let _packet_bytes = packet_data.write_le(&mut std::io::Cursor::new(Vec::new())).unwrap();
+        packet_data.write_le(&mut std::io::Cursor::new(Vec::new())).unwrap();
 
         // This would need proper ANPP framing to test fully
         // For now, test that parser doesn't crash with invalid data

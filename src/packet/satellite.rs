@@ -1,4 +1,5 @@
 use binrw::{binrw, BinRead, BinWrite};
+use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
 
 /// Satellite navigation system
@@ -32,24 +33,17 @@ impl From<u8> for SatelliteSystem {
     }
 }
 
-/// Satellite frequency tracking status bitfield
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(little)]
-pub struct TrackingStatus(u8);
-
-impl TrackingStatus {
-    pub fn raw(&self) -> u8 { self.0 }
-    pub fn is_valid(&self) -> bool { self.0 == 0 }
-    pub fn carrier_phase_valid(&self) -> bool { self.0 & (1 << 0) != 0 }
-    pub fn carrier_phase_cycle_slip(&self) -> bool { self.0 & (1 << 1) != 0 }
-    pub fn carrier_phase_half_cycle_ambiguity(&self) -> bool { self.0 & (1 << 2) != 0 }
-    pub fn pseudo_range_valid(&self) -> bool { self.0 & (1 << 3) != 0 }
-    pub fn doppler_valid(&self) -> bool { self.0 & (1 << 4) != 0 }
-    pub fn snr_valid(&self) -> bool { self.0 & (1 << 5) != 0 }
-}
-
-impl From<u8> for TrackingStatus {
-    fn from(v: u8) -> Self { Self(v) }
+bitflags! {
+    /// Satellite frequency tracking status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct TrackingStatus: u8 {
+        const CARRIER_PHASE_VALID = 1 << 0;
+        const CARRIER_PHASE_CYCLE_SLIP = 1 << 1;
+        const CARRIER_PHASE_HALF_CYCLE_AMBIGUITY = 1 << 2;
+        const PSEUDO_RANGE_VALID = 1 << 3;
+        const DOPPLER_VALID = 1 << 4;
+        const SNR_VALID = 1 << 5;
+    }
 }
 
 /// Per-frequency measurement within a RawSatelliteEntry
@@ -59,6 +53,8 @@ pub struct RawSatelliteFrequency {
     /// Satellite frequency code (system-dependent)
     pub frequency: u8,
     /// Tracking status flags for carrier/pseudo range/doppler validity
+    #[br(map = TrackingStatus::from_bits_retain)]
+    #[bw(map = |x: &TrackingStatus| x.bits())]
     pub tracking_status: TrackingStatus,
     /// Carrier phase (cycles)
     pub carrier_phase: f64,
