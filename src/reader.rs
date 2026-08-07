@@ -43,6 +43,37 @@ impl<R: Read> AnppReader<R> {
             drain_internal: false,
         }
     }
+
+    /// Wire bytes of the most recently parsed packet, or `None` before the
+    /// first successful parse. Bytes skipped while scanning for a valid
+    /// packet are not captured.
+    ///
+    /// A `for` loop mutably borrows the reader for the entire loop body,
+    /// so this method can not be used directly. A `while` loop only
+    /// borrows the iterator for the call to `next()`, so this method can
+    /// be used in the body of the loop. For example:
+    ///
+    /// ```no_run
+    /// use liban::reader::AnppReader;
+    /// use std::net::TcpStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let stream = TcpStream::connect("127.0.0.1:8080")?;
+    ///     let mut reader = AnppReader::new(stream);
+    ///     let mut recording = Vec::new();
+    ///     while let Some(packet) = reader.next() {
+    ///         let packet = packet?;
+    ///         if let Some(raw) = reader.last_raw_bytes() {
+    ///             recording.extend_from_slice(raw);
+    ///         }
+    ///         eprintln!("{:?}", packet);
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn last_raw_bytes(&self) -> Option<&[u8]> {
+        self.parser.last_raw_bytes()
+    }
 }
 
 impl<R: Read> Iterator for AnppReader<R> {
@@ -98,8 +129,9 @@ impl<R: Read> Iterator for AnppReader<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::packet::system::Request;
-    use std::io::{Read, Cursor};
+    use crate::packet::{PacketId, system::Request};
+    use crate::protocol::AnppProtocol;
+    use std::io::{Cursor, Read};
 
     #[test]
     fn test_random_data_consumption() {
@@ -253,6 +285,44 @@ mod tests {
 
         // The exact number depends on whether our test data forms valid ANPP packets
         println!("Total packets parsed from test data: {}", total_packets);
+    }
+
+    #[test]
+    fn test_raw_bytes_in_reader() {
+        let frames = [
+            AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap(),
+            AnppProtocol::get_packet_bytes(PacketId::new(1), &[21]).unwrap(),
+            AnppProtocol::get_packet_bytes(PacketId::new(255), &[0xAA, 0xBB]).unwrap(),
+            AnppProtocol::get_packet_bytes(PacketId::new(255), &[0x77; 255]).unwrap(),
+        ];
+        // Garbage runs of one, two, and three bytes separate the frames. A
+        // bogus header starting inside a run can read its length field from
+        // an uncontrolled frame byte and claim up to 260 bytes, which
+        // stalls the scan if the claim overruns the input. The final frame
+        // carries a 255-byte payload so every possible claim fits and the
+        // scan always reaches the next real frame.
+        let input = [
+            frames[0].as_slice(),
+            &[0x11],
+            frames[1].as_slice(),
+            &[0x22, 0x33],
+            frames[2].as_slice(),
+            &[0x44, 0x55, 0x66],
+            frames[3].as_slice(),
+        ]
+        .concat();
+
+        let mut reader = AnppReader::new(input.as_slice());
+        let mut captured = Vec::new();
+        while let Some(result) = reader.next() {
+            result.unwrap();
+            let raw = reader.last_raw_bytes().expect("raw bytes after a parsed packet");
+            captured.push(raw.to_vec());
+        }
+
+        // Each capture is exactly its frame's wire bytes; the garbage
+        // separators are skipped, not recorded.
+        assert_eq!(captured, frames);
     }
 
     #[test]

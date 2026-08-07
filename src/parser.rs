@@ -121,6 +121,7 @@ pub fn parse_datagram(datagram: &[u8]) -> core::result::Result<Packet, DatagramE
 pub struct AnppParser {
     buf: Vec<u8>,
     buf_start: usize, // Start position of valid data in buffer
+    last_raw: Vec<u8>,
 }
 
 impl AnppParser {
@@ -128,6 +129,18 @@ impl AnppParser {
         Self {
             buf: Vec::new(),
             buf_start: 0,
+            last_raw: Vec::new(),
+        }
+    }
+
+    /// Wire bytes of the most recently parsed packet, or `None` before the
+    /// first successful parse. Bytes skipped while scanning for a valid
+    /// packet are not captured.
+    pub fn last_raw_bytes(&self) -> Option<&[u8]> {
+        if self.last_raw.is_empty() {
+            None
+        } else {
+            Some(&self.last_raw)
         }
     }
 
@@ -147,6 +160,10 @@ impl AnppParser {
 
             match parse_packet(available_data) {
                 Ok((packet, bytes_consumed)) => {
+                    self.last_raw.clear();
+                    self.last_raw
+                        .extend_from_slice(&self.buf[self.buf_start..][..bytes_consumed]);
+
                     // Advance buffer start position instead of draining
                     self.buf_start += bytes_consumed;
 
@@ -250,6 +267,25 @@ mod tests {
 
         parser.clear();
         assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_last_raw_bytes_excludes_skipped_noise() {
+        // The parser checks a candidate header's claimed length before its
+        // LRC, so noise that puts a large value in the length position
+        // stalls the scan waiting for more data. One noise byte avoids
+        // that: the bogus header's length field lands on the frame's
+        // packet id, which is small.
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        let mut input = vec![0xFF];
+        input.extend_from_slice(&frame);
+
+        let mut parser = AnppParser::new();
+        assert!(parser.last_raw_bytes().is_none());
+
+        let packet = parser.consume(&input).expect("should parse the framed packet");
+        assert!(matches!(packet, Packet::Request(_)));
+        assert_eq!(parser.last_raw_bytes(), Some(frame.as_slice()));
     }
 
     #[test]
