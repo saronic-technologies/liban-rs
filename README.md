@@ -1,91 +1,45 @@
-# liban - Advanced Navigation Library
+# liban
 
-A comprehensive Rust library for communicating with Advanced Navigation devices using the [Advanced Navigation Packet Protocol (ANPP)](https://docs.advancednavigation.com/boreas-d/ANPP/Advanced%20Navigation%20Packet.htm).
+A sans-IO Rust library for [ANPP](https://docs.advancednavigation.com/certus/ANPP/Advanced%20Navigation%20Packet.htm),
+the Advanced Navigation Packet Protocol.
 
-## Supported Packet Types
+## Usage
 
-The library implements the following packets:
+```rust
+use liban::{reader::AnppReader, Packet};
+use std::net::TcpStream;
 
-### System Packets (0-14)
-- **AcknowledgePacket** (ID 0) - Device command acknowledgments
-- **RequestPacket** (ID 1) - Request specific packet types from device
-- **BootModePacket** (ID 2) - Device boot mode control
-- **DeviceInformationPacket** (ID 3) - Hardware/software version info and 3-part serial number
-- **RestoreFactorySettingsPacket** (ID 4) - Factory reset command with verification 0x85429E1C (re-enables DHCP)
-- **ResetPacket** (ID 5) - Device reset command with verification 0x21057A7E
-- **IpConfigurationPacket** (ID 11) - Network configuration settings with IP address conversion
-
-### State Packets (20-89)
-- **SystemStatePacket** (ID 20) - Complete navigation state (position, velocity, attitude, accelerations) with status interpretation
-- **UnixTimePacket** (ID 21) - Unix timestamp with microsecond precision
-- **StatusPacket** (ID 23) - System and filter status flags with comprehensive bit interpretation
-- **EulerOrientationStdDevPacket** (ID 26) - Euler orientation standard deviations (roll, pitch, heading) in radians
-- **RawSensorsPacket** (ID 28) - Raw accelerometer, gyroscope, IMU temperature, pressure sensor data
-- **SatellitesPacket** (ID 30) - HDOP, VDOP, and satellite counts per constellation (GPS, GLONASS, Beidou, Galileo, SBAS)
-- **ExternalTimePacket** (ID 52) - Send external time to device (unix seconds + microseconds) for clock sync when GNSS unavailable
-- **HeavePacket** (ID 58) - Heave measurements at 4 reference points in meters
-- **SensorTemperaturePacket** (ID 85) - Temperature readings from accelerometer, gyroscope, and pressure sensors
-
-### Configuration Packets (180-203)
-- **PacketTimerPeriodPacket** (ID 180) - Packet transmission timer period with UTC synchronization support
-- **PacketsPeriodPacket** (ID 181) - Individual packet transmission rates with variable length
-- **InstallationAlignmentPacket** (ID 185) - Device mounting alignment parameters
-- **FilterOptionsPacket** (ID 186) - Navigation filter configuration with 15 vehicle types (0-14)
-- **OdometerConfigurationPacket** (ID 192) - Odometer sensor parameters with automatic pulse measurement
-- **SetZeroOrientationAlignmentPacket** (ID 193) - Zero orientation reference with verification 0x9A4E8055
-- **ReferencePointOffsetsPacket** (ID 194) - Reference point offsets for 4 heave points with COG lever arm support
-- **IpDataportsConfigurationPacket** (ID 202) - 4 IP dataport configurations (TCP Server/Client, UDP, MODE_NONE)
-
-## Protocol Details
-
-### ANPP Packet Structure
-```
-[Header LRC][Packet ID][Length][CRC16][Data Payload]
+let stream = TcpStream::connect("192.168.42.42:16718")?;
+for packet in AnppReader::new(stream).flatten() {
+    if let Packet::SystemState(s) = packet {
+        println!("{:.6} {:.6}", s.latitude.to_degrees(), s.longitude.to_degrees());
+    }
+}
 ```
 
-- **Header LRC**: `(PacketID + Length + CRC0 + CRC1) XOR 0xFF + 1`
-- **CRC16-CCITT**: Polynomial 0x1021 over data payload
-- **Little-endian**: All multi-byte values
-- **Maximum payload**: 255 bytes
+`AnppReader` wraps any `io::Read` as a blocking iterator. Use `parse_datagram`
+for a single framed buffer, or feed byte slices to `AnppParser` when you own
+the buffering. `AnppParser::consume` returns one packet per call even when the
+bytes you fed it completed several, so keep calling it with an empty slice
+until it yields `None`.
+
+## Packet coverage
+
+78 packet types are modeled as `Packet` variants, spanning system IDs 0
+through 14, state 20 through 93, and configuration 180 through 203.
+Unrecognized IDs parse into the `Packet::Unsupported` variant.
 
 ## Examples
 
-The library includes several examples demonstrating different ways to read ANPP data:
-
-### TCP Stream Reader
-Read ANPP packets from a TCP connection:
-```bash
-cargo run --example stream_reader <host> <port>
-cargo run --example stream_reader 192.168.1.100 55555
-cargo run --example stream_reader localhost 8080
-```
-
-### UDP Reader
-Listen for ANPP packets on a UDP port:
-```bash
-cargo run --example udp_reader <port>
-cargo run --example udp_reader 55555
-cargo run --example udp_reader 0.0.0.0:55555
-```
-
-### File Reader
-Parse ANPP packets from a binary file:
-```bash
-cargo run --example file_reader <filename>
-cargo run --example file_reader data/anpp_capture.bin
-```
-
-All examples will:
-- Print detailed debug information for each packet
-- Show packet-specific data (position, velocity, device info, etc.)
-- Provide session statistics
-- Handle errors gracefully
-
-## Testing
-
-Run tests with:
+Each defaults to `192.168.42.42:16718`:
 
 ```bash
-cargo test
-cargo test --features integration-tests  # Requires hardware
+cargo run --example parse_packets   # decode a TCP stream
+cargo run --example read_config     # request and dump config packets
+cargo run --example send_config     # write packet rates and filter options
+cargo run --example udp_reader      # decode datagrams, binds with --bind rather than --ip
 ```
+
+## License
+
+MPL-2.0. See [LICENSE](LICENSE).
