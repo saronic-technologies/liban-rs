@@ -5,12 +5,28 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// 3D offset vector for installation alignment
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct OffsetVector {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl From<[f32; 3]> for OffsetVector {
+    fn from([x, y, z]: [f32; 3]) -> Self {
+        Self { x, y, z }
+    }
+}
+
+impl From<[f64; 3]> for OffsetVector {
+    fn from([x, y, z]: [f64; 3]) -> Self {
+        Self {
+            x: x as f32,
+            y: y as f32,
+            z: z as f32,
+        }
+    }
 }
 
 /// Vehicle type enumeration for filter options

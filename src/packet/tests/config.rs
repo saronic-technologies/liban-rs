@@ -90,8 +90,8 @@ mod tests {
             permanent: true,
             alignment_dcm: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             gnss_antenna_offset: OffsetVector { x: 0.0, y: 0.0, z: 1.5 },
-            odometer_offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
-            external_data_offset: OffsetVector { x: 0.0, y: 0.0, z: 0.0 },
+            odometer_offset: OffsetVector::default(),
+            external_data_offset: OffsetVector::default(),
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
