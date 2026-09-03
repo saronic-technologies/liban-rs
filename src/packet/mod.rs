@@ -3,10 +3,12 @@ use binrw::{BinRead, BinResult, BinWrite, Endian};
 use serde::{Deserialize, Serialize};
 use std::io::{Seek, Write};
 
+#[allow(deprecated)]
 pub mod config;
 pub mod gpio;
 pub mod receiver;
 pub mod satellite;
+#[allow(deprecated)]
 pub mod state;
 pub mod system;
 
@@ -78,6 +80,7 @@ where
 use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
             IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
             SubcomponentInformation};
+#[allow(deprecated)]
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
             RawSensors, RawGnss, Satellites,
@@ -89,12 +92,15 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             RunningTime, OdometerState, ExternalTime, ExternalDepth, GeoidHeight, RtcmCorrections,
             Wind, Heave, RawSatelliteData, RawSatelliteEphemeris,
             ExternalOdometer, ExternalAirData, GimbalState, Automotive,
+            ExternalMagnetometers,
             ExtendedSatellites,
             NorthSeekingInitialisationStatus, RawDvlData,
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
-            GnssPositionVelocityTime, GnssOrientation};
-use config::{BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
+            AutomaticMagneticCalibrationStatus, ExternalSvs,
+            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus};
+use config::{AidingSourceConfiguration1, AidingSourceConfiguration2,
+            BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
             GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
             InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
             PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
@@ -103,6 +109,7 @@ use config::{BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOption
 macro_rules! define_packets {
     ( $( $variant:ident => $code:expr, $length:expr ),+ $(,)? ) => {
         $(
+            #[allow(deprecated)]
             impl HasPacketId for $variant {
                 const PACKET_ID: PacketId = PacketId { id: $code };
             }
@@ -143,12 +150,14 @@ macro_rules! define_packets {
         }
 
         /// Packet enum — the single public type for all ANPP packets.
+        #[allow(deprecated)]
         #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub enum Packet {
             $( $variant($variant), )+
             Unsupported(Vec<u8>),
         }
 
+        #[allow(deprecated)]
         impl Packet {
             /// Get the packet ID
             pub fn packet_id(&self) -> u8 {
@@ -218,7 +227,7 @@ define_packets!(
     ExtendedDeviceInformation => 13, Fixed(36),
     SubcomponentInformation => 14, Variable,
 
-    // State Packets (20-93)
+    // State Packets (20-95)
     SystemState => 20, Fixed(100),
     UnixTime => 21, Fixed(8),
     FormattedTime => 22, Fixed(14),
@@ -264,15 +273,19 @@ define_packets!(
     NorthSeekingInitialisationStatus => 71, Fixed(28),
     GimbalState => 72, Fixed(8),
     Automotive => 73, Fixed(24),
+    ExternalMagnetometers => 75, Fixed(17),
     ZeroAngularVelocity => 83, Fixed(8),
     ExtendedSatellites => 84, Variable,
     SensorTemperature => 85, Fixed(32),
     SystemTemperature => 86, Fixed(64),
     VesselMotion => 89, Fixed(48),
+    AutomaticMagneticCalibrationStatus => 90, Fixed(78),
+    ExternalSvs => 91, Fixed(28),
     GnssPositionVelocityTime => 92, Fixed(76),
     GnssOrientation => 93, Fixed(36),
+    AidingSourceStatus => 95, Fixed(64),
 
-    // Configuration Packets (180-203)
+    // Configuration Packets (180-208)
     PacketTimerPeriod => 180, Fixed(4),
     PacketsPeriod => 181, Variable,
     BaudRates => 182, Fixed(17),
@@ -289,6 +302,8 @@ define_packets!(
     GpioInputConfiguration => 199, Fixed(65),
     IpDataportsConfiguration => 202, Fixed(30),
     CanConfiguration => 203, Fixed(11),
+    AidingSourceConfiguration1 => 207, Fixed(243),
+    AidingSourceConfiguration2 => 208, Fixed(243),
 );
 
 impl Packet {
@@ -305,6 +320,7 @@ impl Packet {
     ///   microseconds value is always zero.
     /// - `FormattedTime` can express times before unix epoch, but `u32` does not
     ///   support negatives, so anything before 1970-01-01 is dropped.
+    #[allow(deprecated)]
     pub fn timestamp(&self) -> Option<(u32, u32)> {
         match self {
             Packet::SystemState(p) => p
@@ -346,10 +362,19 @@ impl Packet {
             Packet::RestoreFactorySettings(_) | Packet::Reset(_) |
             Packet::SerialPortPassthrough(_) |
             Packet::IpConfiguration(_) |
+            Packet::RawGnss(_) |
             Packet::ExternalPositionVelocity(_) | Packet::ExternalPosition(_) |
             Packet::ExternalVelocity(_) | Packet::ExternalBodyVelocity(_) |
             Packet::ExternalHeading(_) | Packet::ExternalTime(_) |
+            Packet::ExternalDepth(_) |
             Packet::RtcmCorrections(_) |
+            Packet::Wind(_) |
+            Packet::ExternalOdometer(_) | Packet::ExternalAirData(_) |
+            Packet::RawDvlData(_) | Packet::GimbalState(_) |
+            Packet::ExternalMagnetometers(_) | Packet::ZeroAngularVelocity(_) |
+            Packet::ExternalSvs(_) |
+            Packet::GnssPositionVelocityTime(_) | Packet::GnssOrientation(_) |
+            Packet::AidingSourceStatus(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
             Packet::GpioConfiguration(_) |
@@ -358,7 +383,8 @@ impl Packet {
             Packet::DualAntennaConfiguration(_) | Packet::GnssConfiguration(_) |
             Packet::GpioInputConfiguration(_) | Packet::CanConfiguration(_) |
             Packet::UserData(_) |
-            Packet::IpDataportsConfiguration(_) => {
+            Packet::IpDataportsConfiguration(_) |
+            Packet::AidingSourceConfiguration1(_) | Packet::AidingSourceConfiguration2(_) => {
                 let packet_id = PacketId::new(self.packet_id());
                 let data = self.payload_bytes()?;
                 crate::protocol::AnppProtocol::get_packet_bytes(packet_id, &data)
@@ -370,6 +396,7 @@ impl Packet {
 
 #[cfg(test)]
 mod tests {
+    #[allow(deprecated)]
     use crate::packet::{
         Packet,
         satellite::{EphemerisData, SatelliteSystem},
@@ -377,6 +404,7 @@ mod tests {
     };
 
     #[test]
+    #[allow(deprecated)]
     fn timestamp_gated_on_validity_bit() {
         let mut gnss = RawGnss {
             unix_time_seconds: 1_700_000_000,
@@ -403,6 +431,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn timestamp_rounds_satellite_data_nanoseconds() {
         let base = RawSatelliteData {
             unix_time: 1_700_000_000,
@@ -420,6 +449,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn timestamp_satellite_ephemeris_has_zero_microseconds() {
         let ephemeris = RawSatelliteEphemeris {
             unix_time: 1_700_000_000,

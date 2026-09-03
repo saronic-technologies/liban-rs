@@ -5,12 +5,28 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// 3D offset vector for installation alignment
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct OffsetVector {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl From<[f32; 3]> for OffsetVector {
+    fn from([x, y, z]: [f32; 3]) -> Self {
+        Self { x, y, z }
+    }
+}
+
+impl From<[f64; 3]> for OffsetVector {
+    fn from([x, y, z]: [f64; 3]) -> Self {
+        Self {
+            x: x as f32,
+            y: y as f32,
+            z: z as f32,
+        }
+    }
 }
 
 /// Vehicle type enumeration for filter options
@@ -35,6 +51,7 @@ pub enum VehicleType {
 }
 
 /// Offset type for dual antenna configuration
+#[deprecated(note = "recent firmware versions report zero")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u16)]
 pub enum OffsetType {
@@ -43,6 +60,7 @@ pub enum OffsetType {
 }
 
 /// Automatic offset orientation for dual antenna configuration
+#[deprecated(note = "unused on recent firmware versions")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum AutomaticOffsetOrientation {
@@ -450,8 +468,10 @@ pub struct DualAntennaConfiguration {
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
     /// Offset type
+    #[deprecated(note = "recent firmware versions report zero")]
     pub offset_type: OffsetType,
     /// Automatic offset orientation; ignored when using manual offset
+    #[deprecated(note = "unused on recent firmware versions")]
     pub automatic_offset_orientation: AutomaticOffsetOrientation,
     #[br(temp)]
     #[bw(calc = 0u8)]
@@ -595,6 +615,111 @@ pub struct CanConfiguration {
     #[br(temp)]
     #[bw(calc = [0u8; 4])]
     _reserved: [u8; 4],
+}
+
+bitflags! {
+    /// Aiding source enable flags for AidingSourceConfiguration1
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct AidingSourceBitmask1: u16 {
+        const INTERNAL_GNSS_PVT = 1 << 0;
+        const INTERNAL_GNSS_ORIENTATION = 1 << 1;
+        const INTERNAL_MAGNETOMETERS = 1 << 2;
+        const INTERNAL_PRESSURE = 1 << 3;
+        const EXTERNAL_GNSS_PVT = 1 << 4;
+        const EXTERNAL_GNSS_ORIENTATION = 1 << 5;
+        const EXTERNAL_POSITION = 1 << 6;
+        const EXTERNAL_ODOMETER = 1 << 7;
+        const EXTERNAL_HEADING = 1 << 8;
+        const EXTERNAL_PRESSURE = 1 << 9;
+        const EXTERNAL_VELOCITY = 1 << 10;
+        const EXTERNAL_POSITION_VELOCITY = 1 << 11;
+        const EXTERNAL_BODY_VELOCITY = 1 << 12;
+        const EXTERNAL_AIR_DATA = 1 << 13;
+        const EXTERNAL_MAGNETOMETERS = 1 << 14;
+        const EXTERNAL_LVS = 1 << 15;
+    }
+}
+
+/// Aiding source configuration packet 1 (Packet ID 207, Length 243) - Read/Write
+///
+/// A position offset is the position of the sensor from the INS defined body
+/// point, in body coordinates. Updates to the Installation Alignment packet's
+/// GNSS antenna, odometer, and external data offsets result in updates to the
+/// corresponding fields of this packet.
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AidingSourceConfiguration1 {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Enabled aiding sources
+    #[br(map = AidingSourceBitmask1::from_bits_retain)]
+    #[bw(map = |x: &AidingSourceBitmask1| x.bits())]
+    pub enabled_sources: AidingSourceBitmask1,
+    pub internal_gnss_pvt_position_offset: OffsetVector,
+    pub internal_gnss_orientation_orientation_offset: OffsetVector,
+    pub external_gnss_pvt_position_offset: OffsetVector,
+    pub external_gnss_orientation_orientation_offset: OffsetVector,
+    pub external_position_position_offset: OffsetVector,
+    pub external_odometer_position_offset: OffsetVector,
+    pub external_heading_orientation_offset: OffsetVector,
+    pub external_pressure_position_offset: OffsetVector,
+    pub external_velocity_position_offset: OffsetVector,
+    pub external_position_velocity_position_offset: OffsetVector,
+    pub external_body_velocity_position_offset: OffsetVector,
+    pub external_body_velocity_orientation_offset: OffsetVector,
+    pub external_air_data_position_offset: OffsetVector,
+    pub external_air_data_orientation_offset: OffsetVector,
+    pub external_magnetometers_orientation_offset: OffsetVector,
+    pub external_lvs_position_offset: OffsetVector,
+    pub external_lvs_orientation_offset: OffsetVector,
+    #[br(temp)]
+    #[bw(calc = [0u8; 36])]
+    _reserved: [u8; 36],
+}
+
+bitflags! {
+    /// Aiding source enable flags for AidingSourceConfiguration2
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct AidingSourceBitmask2: u16 {
+        const INTERNAL_DEPTH_SENSOR = 1 << 0;
+        const EXTERNAL_SUBSONUS = 1 << 1;
+        const EXTERNAL_DVL_DATA = 1 << 2;
+        const EXTERNAL_DEPTH = 1 << 3;
+        const EXTERNAL_USBL = 1 << 4;
+    }
+}
+
+/// Aiding source configuration packet 2 (Packet ID 208, Length 243) - Read/Write
+///
+/// A position offset is the position of the sensor from the INS defined body
+/// point, in body coordinates. Updates to the Installation Alignment packet's
+/// odometer and external data offsets result in updates to the corresponding
+/// fields of this packet.
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AidingSourceConfiguration2 {
+    /// Whether the configuration is saved to non-volatile memory
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    /// Enabled aiding sources
+    #[br(map = AidingSourceBitmask2::from_bits_retain)]
+    #[bw(map = |x: &AidingSourceBitmask2| x.bits())]
+    pub enabled_sources: AidingSourceBitmask2,
+    pub internal_depth_sensor_position_offset: OffsetVector,
+    pub external_subsonus_position_offset: OffsetVector,
+    pub external_subsonus_orientation_offset: OffsetVector,
+    pub external_dvl_data_position_offset: OffsetVector,
+    pub external_dvl_data_orientation_offset: OffsetVector,
+    pub external_depth_position_offset: OffsetVector,
+    pub external_usbl_position_offset: OffsetVector,
+    #[br(temp)]
+    #[bw(calc = [0u8; 156])]
+    _reserved: [u8; 156],
 }
 
 #[cfg(test)]

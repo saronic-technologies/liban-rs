@@ -1,9 +1,11 @@
 use binrw::{binrw, BinRead, BinWrite};
 use bitflags::bitflags;
+use num_enum::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
 /// Satellite navigation system
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum SatelliteSystem {
     #[default]
     Unknown = 0,
@@ -15,22 +17,6 @@ pub enum SatelliteSystem {
     Qzss = 6,
     Omnistar = 8,
     NavIc = 10,
-}
-
-impl From<u8> for SatelliteSystem {
-    fn from(v: u8) -> Self {
-        match v {
-            1 => Self::Gps,
-            2 => Self::Glonass,
-            3 => Self::BeiDou,
-            4 => Self::Galileo,
-            5 => Self::Sbas,
-            6 => Self::Qzss,
-            8 => Self::Omnistar,
-            10 => Self::NavIc,
-            _ => Self::Unknown,
-        }
-    }
 }
 
 bitflags! {

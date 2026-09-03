@@ -1,10 +1,11 @@
 use binrw::{binrw, BinRead, BinResult, BinWrite, Endian};
+use num_enum::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
 
 /// Trimble receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
 pub enum TrimbleModel {
     #[default]
     Unknown = 0,
@@ -24,19 +25,9 @@ impl TrimbleModel {
     }
 }
 
-impl From<u8> for TrimbleModel {
-    fn from(v: u8) -> Self {
-        match v {
-            5 => Self::MbTwo,
-            7 => Self::Bd992,
-            _ => Self::Unknown,
-        }
-    }
-}
-
 /// u-blox receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
 pub enum UBloxModel {
     #[default]
     Unknown = 0,
@@ -44,18 +35,9 @@ pub enum UBloxModel {
     NeoF9P = 5,
 }
 
-impl From<u8> for UBloxModel {
-    fn from(v: u8) -> Self {
-        match v {
-            5 => Self::NeoF9P,
-            _ => Self::Unknown,
-        }
-    }
-}
-
 /// Advanced Navigation receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
 pub enum AdvancedNavigationModel {
     #[default]
     Unknown = 0,
@@ -63,16 +45,6 @@ pub enum AdvancedNavigationModel {
     Aries = 1,
     /// Aries GC2 GNSS receiver
     AriesGc2 = 2,
-}
-
-impl From<u8> for AdvancedNavigationModel {
-    fn from(v: u8) -> Self {
-        match v {
-            1 => Self::Aries,
-            2 => Self::AriesGc2,
-            _ => Self::Unknown,
-        }
-    }
 }
 
 /// GNSS manufacturer and receiver model, encoded as a 2-byte header on the wire
