@@ -7,6 +7,8 @@ mod tests {
         ReferencePointOffsets, DualAntennaConfiguration,
         OffsetType, AutomaticOffsetOrientation,
         IpDataportsConfiguration, IpDataport, IpDataportMode,
+        AidingSourceBitmask1, AidingSourceBitmask2,
+        AidingSourceConfiguration1, AidingSourceConfiguration2,
     };
     use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
@@ -278,6 +280,67 @@ mod tests {
 
         let mut cursor = std::io::Cursor::new(&bytes);
         let deserialized = OdometerConfiguration::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn test_aiding_source_configuration_1_packet_length() {
+        let offset = |x: f32| OffsetVector { x, y: 0.0, z: 0.0 };
+        let original = AidingSourceConfiguration1 {
+            permanent: true,
+            enabled_sources: AidingSourceBitmask1::INTERNAL_GNSS_PVT
+                | AidingSourceBitmask1::EXTERNAL_ODOMETER,
+            internal_gnss_pvt_position_offset: offset(1.0),
+            internal_gnss_orientation_orientation_offset: offset(2.0),
+            external_gnss_pvt_position_offset: offset(3.0),
+            external_gnss_orientation_orientation_offset: offset(4.0),
+            external_position_position_offset: offset(5.0),
+            external_odometer_position_offset: offset(6.0),
+            external_heading_orientation_offset: offset(7.0),
+            external_pressure_position_offset: offset(8.0),
+            external_velocity_position_offset: offset(9.0),
+            external_position_velocity_position_offset: offset(10.0),
+            external_body_velocity_position_offset: offset(11.0),
+            external_body_velocity_orientation_offset: offset(12.0),
+            external_air_data_position_offset: offset(13.0),
+            external_air_data_orientation_offset: offset(14.0),
+            external_magnetometers_orientation_offset: offset(15.0),
+            external_lvs_position_offset: offset(16.0),
+            external_lvs_orientation_offset: offset(17.0),
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 243, "AidingSourceConfiguration1 should be 243 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = AidingSourceConfiguration1::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn test_aiding_source_configuration_2_packet_length() {
+        let offset = |x: f32| OffsetVector { x, y: 0.0, z: 0.0 };
+        let original = AidingSourceConfiguration2 {
+            permanent: false,
+            enabled_sources: AidingSourceBitmask2::EXTERNAL_DVL_DATA,
+            internal_depth_sensor_position_offset: offset(1.0),
+            external_subsonus_position_offset: offset(2.0),
+            external_subsonus_orientation_offset: offset(3.0),
+            external_dvl_data_position_offset: offset(4.0),
+            external_dvl_data_orientation_offset: offset(5.0),
+            external_depth_position_offset: offset(6.0),
+            external_usbl_position_offset: offset(7.0),
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        original.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 243, "AidingSourceConfiguration2 should be 243 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = AidingSourceConfiguration2::read_le(&mut cursor).expect("Failed to deserialize");
         assert_eq!(deserialized, original);
     }
 }

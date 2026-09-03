@@ -5,6 +5,10 @@ mod tests {
         EulerOrientationStdDev, RawSensors, SensorTemperature,
         GnssPositionVelocityTime, GnssOrientation, FormattedTime,
         SystemStatus, FilterStatus, GnssFixType, GnssPvtStatus, GnssOrientationStatus,
+        ExternalMagnetometers, ExternalMagnetometersFlags,
+        AutomaticMagneticCalibrationStatus, MagneticCalibrationFlags, MagneticCalibrationMethod,
+        ExternalSvs,
+        AidingSourceOrigin, AidingSourceStatus, AidingSourceStatusField,
     };
     use binrw::{BinRead, BinWrite};
     use std::{f32::consts::{FRAC_PI_2, PI}, f64::consts::{FRAC_PI_4, FRAC_PI_6}};
@@ -393,5 +397,135 @@ mod tests {
             };
             assert!(packet.unix_time_seconds().is_none());
         }
+    }
+
+    #[test]
+    fn test_external_magnetometers_packet_length() {
+        let packet = ExternalMagnetometers {
+            delay: 0.01,
+            magnetometer_x: 220.0,
+            magnetometer_y: -35.5,
+            magnetometer_z: 410.0,
+            flags: ExternalMagnetometersFlags::OVER_RANGE,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 17, "ExternalMagnetometers should be 17 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = ExternalMagnetometers::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, packet);
+    }
+
+    #[test]
+    fn test_automatic_magnetic_calibration_status_packet_length() {
+        let packet = AutomaticMagneticCalibrationStatus {
+            method: MagneticCalibrationMethod::Online,
+            flags: MagneticCalibrationFlags::READY | MagneticCalibrationFlags::COARSE_COMPLETE,
+            convergence: 0.85,
+            scale_factor_x: 1.01,
+            scale_factor_y: 0.99,
+            scale_factor_z: 1.0,
+            soft_iron_x: 0.02,
+            soft_iron_y: -0.01,
+            soft_iron_z: 0.03,
+            hard_iron_x: 12.5,
+            hard_iron_y: -8.25,
+            hard_iron_z: 3.75,
+            scale_factor_std_dev_x: 0.001,
+            scale_factor_std_dev_y: 0.002,
+            scale_factor_std_dev_z: 0.003,
+            soft_iron_std_dev_x: 0.0001,
+            soft_iron_std_dev_y: 0.0002,
+            soft_iron_std_dev_z: 0.0003,
+            hard_iron_std_dev_x: 0.5,
+            hard_iron_std_dev_y: 0.6,
+            hard_iron_std_dev_z: 0.7,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 78, "AutomaticMagneticCalibrationStatus should be 78 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = AutomaticMagneticCalibrationStatus::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, packet);
+    }
+
+    #[test]
+    fn test_external_svs_packet_length() {
+        let packet = ExternalSvs {
+            pressure: 10.5,
+            temperature: 14.0,
+            sound_velocity: 1500.0,
+            salinity: 35.0,
+            density: 1025.0,
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 28, "ExternalSvs should be 28 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = ExternalSvs::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, packet);
+    }
+
+    #[test]
+    fn test_aiding_source_status_packet_length() {
+        let packet = AidingSourceStatus {
+            internal_gnss_pvt: AidingSourceStatusField(0b011),
+            internal_gnss_orientation: AidingSourceStatusField(0b011),
+            internal_magnetometers: AidingSourceStatusField(0),
+            internal_pressure: AidingSourceStatusField(0b111),
+            external_gnss_pvt: AidingSourceStatusField((1 << 10) | 0b011),
+            external_gnss_orientation: AidingSourceStatusField(0),
+            external_position: AidingSourceStatusField(0),
+            external_odometer: AidingSourceStatusField((3 << 10) | 0b001),
+            external_heading: AidingSourceStatusField(0),
+            external_pressure: AidingSourceStatusField(0),
+            external_velocity: AidingSourceStatusField(0),
+            external_position_velocity: AidingSourceStatusField(0),
+            external_body_velocity: AidingSourceStatusField(0),
+            external_air_data: AidingSourceStatusField(0),
+            external_magnetometers: AidingSourceStatusField(0),
+            external_lvs: AidingSourceStatusField(0),
+            internal_depth_sensor: AidingSourceStatusField(0),
+            external_subsonus: AidingSourceStatusField(0),
+            external_dvl_data: AidingSourceStatusField(0),
+            external_depth: AidingSourceStatusField(0),
+            external_usbl: AidingSourceStatusField(0),
+        };
+
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        packet.write_le(&mut cursor).expect("Failed to serialize");
+        let bytes = cursor.into_inner();
+        assert_eq!(bytes.len(), 64, "AidingSourceStatus should be 64 bytes");
+
+        let mut cursor = std::io::Cursor::new(&bytes);
+        let deserialized = AidingSourceStatus::read_le(&mut cursor).expect("Failed to deserialize");
+        assert_eq!(deserialized, packet);
+    }
+
+    #[test]
+    fn test_aiding_source_status_field_accessors() {
+        let field = AidingSourceStatusField((2 << 10) | 0b011);
+        assert!(field.online());
+        assert!(field.valid());
+        assert!(!field.fault());
+        assert!(matches!(field.origin(), AidingSourceOrigin::AuxPort));
+
+        let field = AidingSourceStatusField((7 << 10) | 0b100);
+        assert!(!field.online());
+        assert!(!field.valid());
+        assert!(field.fault());
+        assert!(matches!(field.origin(), AidingSourceOrigin::DataStream4));
+
+        let field = AidingSourceStatusField(9 << 10);
+        assert!(matches!(field.origin(), AidingSourceOrigin::Unknown));
     }
 }

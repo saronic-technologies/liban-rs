@@ -1,24 +1,28 @@
 use super::PacketKind;
 use binrw::{binrw, BinRead, BinWrite};
+use num_enum::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
 /// Acknowledge result codes
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum AcknowledgeResult {
     Success = 0,
-    Failure = 1,
-    UnknownPacket = 2,
-}
-
-impl From<u8> for AcknowledgeResult {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::Success,
-            1 => Self::Failure,
-            2 => Self::UnknownPacket,
-            _ => Self::Failure,
-        }
-    }
+    /// Failure due to a CRC error
+    CrcError = 1,
+    /// Failure due to an incorrect packet size
+    PacketSizeIncorrect = 2,
+    /// Failure due to values outside of valid ranges
+    ValuesOutsideRange = 3,
+    /// Failure due to a system flash memory failure
+    FlashMemoryFailure = 4,
+    /// Failure because the system is not ready
+    SystemNotReady = 5,
+    /// Failure because the packet is unknown
+    UnknownPacket = 6,
+    /// Result code not defined by the protocol
+    #[num_enum(default)]
+    Unknown = 255,
 }
 
 /// Acknowledge packet (Packet ID 0, Length 4) - Read only
@@ -51,8 +55,8 @@ pub struct BootMode {
 }
 
 /// Advanced Navigation device type
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
-#[brw(repr = u32)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u32)]
 pub enum DeviceType {
     #[default]
     Unknown = 0,
@@ -77,35 +81,7 @@ pub enum DeviceType {
     CertusMiniD = 51,
     BoreasD50 = 54,
     BoreasA50 = 56,
-}
-
-impl From<u32> for DeviceType {
-    fn from(v: u32) -> Self {
-        match v {
-            1 => Self::Spatial,
-            4 => Self::SpatialFog,
-            5 => Self::SpatialDual,
-            11 => Self::Orientus,
-            13 => Self::AirDataUnit,
-            14 => Self::Subsonus,
-            16 => Self::SpatialFogDual,
-            17 => Self::Motus,
-            19 => Self::GnssCompass,
-            21 => Self::SubsonusTag,
-            22 => Self::Poseidon,
-            26 => Self::Certus,
-            28 => Self::BoreasD90,
-            41 => Self::BoreasD70,
-            43 => Self::BoreasA90,
-            44 => Self::BoreasA70,
-            49 => Self::CertusMiniA,
-            50 => Self::CertusMiniN,
-            51 => Self::CertusMiniD,
-            54 => Self::BoreasD50,
-            56 => Self::BoreasA50,
-            _ => Self::Unknown,
-        }
-    }
+    AirDataUnit2 = 69,
 }
 
 /// Device information packet (Packet ID 3, Length 24) - Read only
@@ -113,6 +89,8 @@ impl From<u32> for DeviceType {
 #[brw(little)]
 pub struct DeviceInformation {
     pub software_version: u32,
+    #[br(map = |x: u32| DeviceType::from(x))]
+    #[bw(map = |x: &DeviceType| *x as u32)]
     pub device_type: DeviceType,
     pub hardware_revision: u32,
     pub serial_number_1: u32,
@@ -198,6 +176,8 @@ pub struct ExtendedDeviceInformation {
     /// Software version
     pub software_version: u32,
     /// Device type identifier
+    #[br(map = |x: u32| DeviceType::from(x))]
+    #[bw(map = |x: &DeviceType| *x as u32)]
     pub device_id: DeviceType,
     /// Hardware revision
     pub hardware_revision: u32,
@@ -211,24 +191,14 @@ pub struct ExtendedDeviceInformation {
 }
 
 /// Subcomponent device identifier
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u32)]
 pub enum SubcomponentDeviceId {
     #[default]
     Unknown = 0,
     SpatialMemsImu = 5,
     EvoMemsImu = 17,
     Aries = 27,
-}
-
-impl From<u32> for SubcomponentDeviceId {
-    fn from(v: u32) -> Self {
-        match v {
-            5 => Self::SpatialMemsImu,
-            17 => Self::EvoMemsImu,
-            27 => Self::Aries,
-            _ => Self::Unknown,
-        }
-    }
 }
 
 /// Single subcomponent entry within SubcomponentInformation

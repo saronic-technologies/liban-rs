@@ -23,7 +23,7 @@ pub use packet::state::{
     SystemStatus, FilterStatus, GnssFixType, SystemState, UnixTime, Status,
     PositionStdDev, VelocityStdDev,
     EulerOrientationStdDev, QuaternionOrientationStdDev,
-    RawSensors, RawGnss, RawGnssStatus,
+    RawSensors, RawGnssStatus,
     Satellites,
     GeodeticPosition, EcefPosition, UtmPosition, NedVelocity, BodyVelocity,
     Acceleration, BodyAcceleration, EulerOrientation, QuaternionOrientation,
@@ -32,11 +32,17 @@ pub use packet::state::{
     ExternalBodyVelocity, ExternalHeading,
     RunningTime, ExternalTime, GeoidHeight, RtcmCorrections,
     Heave, RawDvlData, DvlStatus,
+    ExternalMagnetometers, ExternalMagnetometersFlags,
     GnssReceiverInformation,
     SensorTemperature,
+    AutomaticMagneticCalibrationStatus, MagneticCalibrationFlags, MagneticCalibrationMethod,
+    ExternalSvs,
     GnssPositionVelocityTime, GnssOrientation,
     GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
+    AidingSourceStatus, AidingSourceStatusField, AidingSourceOrigin,
 };
+#[allow(deprecated)]
+pub use packet::state::RawGnss;
 
 pub use packet::receiver::{
     AdvancedNavigationModel, GenericReceiverData, GnssManufacturer, GnssReceiverData,
@@ -49,4 +55,6 @@ pub use packet::config::{
     InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
     SetZeroOrientationAlignment, ReferencePointOffsets, UserData,
     IpDataportMode, IpDataport, IpDataportsConfiguration,
+    AidingSourceBitmask1, AidingSourceBitmask2,
+    AidingSourceConfiguration1, AidingSourceConfiguration2,
 };

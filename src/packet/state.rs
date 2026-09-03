@@ -4,6 +4,7 @@ use super::{
 };
 use binrw::{binrw, BinRead, BinWrite};
 use bitflags::{bitflags, parser::WriteHex};
+use num_enum::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -24,7 +25,8 @@ macro_rules! hex_debug {
 // ===========================================================================
 
 /// GNSS fix type enumeration
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum GnssFixType {
     #[default]
     NoFix = 0,
@@ -37,24 +39,9 @@ pub enum GnssFixType {
     RtkFixed = 7,
 }
 
-impl From<u8> for GnssFixType {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::NoFix,
-            1 => Self::Fix2D,
-            2 => Self::Fix3D,
-            3 => Self::SbassFix,
-            4 => Self::DifferentialFix,
-            5 => Self::PppFix,
-            6 => Self::RtkFloat,
-            7 => Self::RtkFixed,
-            _ => Self::NoFix,
-        }
-    }
-}
-
 /// Spoofing status for GNSS packets
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum SpoofingStatus {
     #[default]
     Unknown = 0,
@@ -63,38 +50,15 @@ pub enum SpoofingStatus {
     DetectedAndUnmitigated = 3,
 }
 
-impl From<u8> for SpoofingStatus {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::Unknown,
-            1 => Self::None,
-            2 => Self::DetectedAndMitigated,
-            3 => Self::DetectedAndUnmitigated,
-            _ => Self::Unknown,
-        }
-    }
-}
-
 /// Interference status for GNSS packets
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum InterferenceStatus {
     #[default]
     Unknown = 0,
     None = 1,
     DetectedAndMitigated = 2,
     DetectedAndUnmitigated = 3,
-}
-
-impl From<u8> for InterferenceStatus {
-    fn from(v: u8) -> Self {
-        match v {
-            0 => Self::Unknown,
-            1 => Self::None,
-            2 => Self::DetectedAndMitigated,
-            3 => Self::DetectedAndUnmitigated,
-            _ => Self::Unknown,
-        }
-    }
 }
 
 bitflags! {
@@ -423,7 +387,12 @@ pub struct Satellites {
     pub sbas_satellites: u8,
 }
 
-/// Raw GNSS packet (Packet ID 29, Length 74) - Read only
+/// Raw GNSS packet (Packet ID 29, Length 74) - Read/Write
+///
+/// This packet represents the raw data as it is received from the GNSS
+/// receiver. The position is not corrected for antenna position offset and
+/// the velocity is not compensated for the antenna lever arm offset.
+#[deprecated(note = "superseded by GnssPositionVelocityTime and GnssOrientation")]
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct RawGnss {
@@ -797,6 +766,7 @@ pub struct Heave {
 }
 
 /// Raw satellite data packet (Packet ID 60, Variable length) - Read only
+#[deprecated(note = "broken due to lossy signal codes; unusable without detailed receiver information, which may not always be available")]
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -822,6 +792,7 @@ pub struct RawSatelliteData {
 }
 
 /// Raw satellite ephemeris packet (Packet ID 61, Length 132 GPS / 94 GLONASS) - Read only
+#[deprecated(note = "broken due to lossy signal codes; unusable without detailed receiver information, which may not always be available")]
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -918,7 +889,7 @@ pub struct GnssReceiverInformation {
     pub data: GnssReceiverData,
 }
 
-/// Raw DVL data packet (Packet ID 70, Length 60) - Read only
+/// Raw DVL data packet (Packet ID 70, Length 60) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct RawDvlData {
@@ -1027,6 +998,40 @@ pub struct Automotive {
     _reserved: [u8; 4],
 }
 
+bitflags! {
+    /// External magnetometers flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct ExternalMagnetometersFlags: u8 {
+        const FAILURE = 1 << 0;
+        const OVER_RANGE = 1 << 1;
+    }
+}
+
+/// External magnetometers packet (Packet ID 75, Length 17) - Read/Write
+///
+/// External magnetometers need to be calibrated before feeding into the
+/// device; the 2D, 3D, and automatic magnetic calibration of the device
+/// cannot be used to calibrate the external magnetometer values. For Boreas
+/// units, a magnetic heading provided in this packet is accepted without
+/// error, but it is not used, because the Boreas fiber optic gyroscopes are
+/// more accurate than magnetometers.
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct ExternalMagnetometers {
+    /// Delay in seconds
+    pub delay: f32,
+    /// Magnetometer X in milligauss
+    pub magnetometer_x: f32,
+    /// Magnetometer Y in milligauss
+    pub magnetometer_y: f32,
+    /// Magnetometer Z in milligauss
+    pub magnetometer_z: f32,
+    /// External magnetometer flags
+    #[br(map = ExternalMagnetometersFlags::from_bits_retain)]
+    #[bw(map = |x: &ExternalMagnetometersFlags| x.bits())]
+    pub flags: ExternalMagnetometersFlags,
+}
+
 /// Zero angular velocity packet (Packet ID 83, Length 8) - Write only
 #[binrw]
 #[brw(little)]
@@ -1111,7 +1116,85 @@ pub struct VesselMotion {
     pub heave_point_4: f32,
 }
 
-/// GNSS Position Velocity Time packet (Packet ID 92, Length 76) - Read only
+/// Automatic magnetic calibration status method
+#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum MagneticCalibrationMethod {
+    Disabled = 0,
+    GnssAided = 1,
+    Online = 2,
+}
+
+bitflags! {
+    /// Automatic magnetic calibration status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct MagneticCalibrationFlags: u8 {
+        const READY = 1 << 0;
+        const COARSE_COMPLETE = 1 << 1;
+        const EXISTING_CALIBRATION = 1 << 2;
+        const AWAITING_FILTERS = 1 << 3;
+        const MANUAL_CALIBRATION_IN_PROGRESS = 1 << 4;
+        const INVALID_VEHICLE_TYPE = 1 << 5;
+        const MAGNETIC_HEADING_DISABLED = 1 << 6;
+    }
+}
+
+/// Automatic magnetic calibration status packet (Packet ID 90, Length 78) - Read only
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct AutomaticMagneticCalibrationStatus {
+    /// Method
+    pub method: MagneticCalibrationMethod,
+    /// Flags
+    #[br(map = MagneticCalibrationFlags::from_bits_retain)]
+    #[bw(map = |x: &MagneticCalibrationFlags| x.bits())]
+    pub flags: MagneticCalibrationFlags,
+    pub convergence: f32,
+    pub scale_factor_x: f32,
+    pub scale_factor_y: f32,
+    pub scale_factor_z: f32,
+    pub soft_iron_x: f32,
+    pub soft_iron_y: f32,
+    pub soft_iron_z: f32,
+    pub hard_iron_x: f32,
+    pub hard_iron_y: f32,
+    pub hard_iron_z: f32,
+    pub scale_factor_std_dev_x: f32,
+    pub scale_factor_std_dev_y: f32,
+    pub scale_factor_std_dev_z: f32,
+    pub soft_iron_std_dev_x: f32,
+    pub soft_iron_std_dev_y: f32,
+    pub soft_iron_std_dev_z: f32,
+    pub hard_iron_std_dev_x: f32,
+    pub hard_iron_std_dev_y: f32,
+    pub hard_iron_std_dev_z: f32,
+}
+
+/// External SVS packet (Packet ID 91, Length 28) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExternalSvs {
+    /// Pressure in dBar
+    pub pressure: f32,
+    /// Temperature in degrees Celsius
+    pub temperature: f32,
+    /// Sound velocity in m/s
+    pub sound_velocity: f32,
+    /// Salinity in ppt
+    pub salinity: f32,
+    /// Density in kg/m³
+    pub density: f32,
+    #[br(temp)]
+    #[bw(calc = [0u8; 8])]
+    _reserved: [u8; 8],
+}
+
+/// GNSS Position Velocity Time packet (Packet ID 92, Length 76) - Read/Write
+///
+/// This packet provides the raw Position, Velocity, and Time (PVT) data as it
+/// is received from the GNSS receiver. The position and velocity describe the
+/// location of the GNSS primary antenna, not the vehicle reference point.
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1140,7 +1223,12 @@ pub struct GnssPositionVelocityTime {
     pub latency: u32,
 }
 
-/// GNSS Orientation packet (Packet ID 93, Length 36) - Read only
+/// GNSS Orientation packet (Packet ID 93, Length 36) - Read/Write
+///
+/// This packet represents the raw orientation data as it is received from the
+/// GNSS receiver, and applies only to dual antenna installations. The
+/// orientation is that of the line between the two antennas, not of the
+/// vehicle body, and is described in the NED frame.
 #[binrw]
 #[brw(little)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1160,6 +1248,76 @@ pub struct GnssOrientation {
     pub tilt_std_dev: f32,
     pub baseline_length: f32,
     pub latency: u32,
+}
+
+/// Origin of an aiding source, decoded from bits 10-15 of an
+/// [`AidingSourceStatusField`]
+#[derive(Debug, Clone, Copy, FromPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum AidingSourceOrigin {
+    Internal = 0,
+    PrimaryPort = 1,
+    AuxPort = 2,
+    Gpio = 3,
+    DataStream1 = 4,
+    DataStream2 = 5,
+    DataStream3 = 6,
+    DataStream4 = 7,
+    /// Origin value not defined by the protocol
+    #[num_enum(default)]
+    Unknown = 63,
+}
+
+/// Status of a single aiding source within [`AidingSourceStatus`]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct AidingSourceStatusField(pub u16);
+
+impl AidingSourceStatusField {
+    const ORIGIN_OFFSET: u32 = 10;
+
+    /// Communicating with device
+    pub fn online(&self) -> bool { self.0 & (1 << 0) != 0 }
+
+    /// Providing valid filter information
+    pub fn valid(&self) -> bool { self.0 & (1 << 1) != 0 }
+
+    /// Reporting a fault
+    pub fn fault(&self) -> bool { self.0 & (1 << 2) != 0 }
+
+    /// Aiding source origin
+    pub fn origin(&self) -> AidingSourceOrigin { AidingSourceOrigin::from((self.0 >> Self::ORIGIN_OFFSET) as u8) }
+}
+
+/// Aiding source status packet (Packet ID 95, Length 64) - Read/Write
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AidingSourceStatus {
+    pub internal_gnss_pvt: AidingSourceStatusField,
+    pub internal_gnss_orientation: AidingSourceStatusField,
+    pub internal_magnetometers: AidingSourceStatusField,
+    pub internal_pressure: AidingSourceStatusField,
+    pub external_gnss_pvt: AidingSourceStatusField,
+    pub external_gnss_orientation: AidingSourceStatusField,
+    pub external_position: AidingSourceStatusField,
+    pub external_odometer: AidingSourceStatusField,
+    pub external_heading: AidingSourceStatusField,
+    pub external_pressure: AidingSourceStatusField,
+    pub external_velocity: AidingSourceStatusField,
+    pub external_position_velocity: AidingSourceStatusField,
+    pub external_body_velocity: AidingSourceStatusField,
+    pub external_air_data: AidingSourceStatusField,
+    pub external_magnetometers: AidingSourceStatusField,
+    pub external_lvs: AidingSourceStatusField,
+    pub internal_depth_sensor: AidingSourceStatusField,
+    pub external_subsonus: AidingSourceStatusField,
+    pub external_dvl_data: AidingSourceStatusField,
+    pub external_depth: AidingSourceStatusField,
+    pub external_usbl: AidingSourceStatusField,
+    #[br(temp)]
+    #[bw(calc = [0u8; 22])]
+    _reserved: [u8; 22],
 }
 
 #[cfg(test)]
