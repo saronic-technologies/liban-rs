@@ -19,13 +19,18 @@ mod tests {
         let packet = PacketTimerPeriod {
             permanent: true,
             utc_synchronisation: true,
-            packet_timer_period: Duration::from_millis(10000),
+            packet_timer_period: Duration::from_micros(10000),
         };
 
         let mut cursor = std::io::Cursor::new(Vec::new());
         packet.write_le(&mut cursor).expect("Failed to serialize");
         let bytes = cursor.into_inner();
         assert_eq!(bytes.len(), 4, "PacketTimerPeriod should be 4 bytes");
+        assert_eq!(
+            bytes[2..4],
+            10000u16.to_le_bytes(),
+            "period encodes as microseconds",
+        );
     }
 
     #[test]

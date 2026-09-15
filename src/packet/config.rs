@@ -156,19 +156,19 @@ mod duration_as_millis {
     }
 }
 
-mod duration_as_millis_u16 {
+mod duration_as_micros_u16 {
     use std::time::Duration;
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
-        serializer.serialize_u16(duration.as_millis() as u16)
+        serializer.serialize_u16(duration.as_micros() as u16)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
     where D: Deserializer<'de> {
-        let millis = u16::deserialize(deserializer)?;
-        Ok(Duration::from_millis(millis as u64))
+        let micros = u16::deserialize(deserializer)?;
+        Ok(Duration::from_micros(micros as u64))
     }
 }
 
@@ -210,9 +210,11 @@ pub struct PacketTimerPeriod {
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub utc_synchronisation: bool,
-    #[br(map = |x: u16| Duration::from_millis(x as u64))]
-    #[bw(map = |x: &Duration| x.as_millis() as u16)]
-    #[serde(with = "duration_as_millis_u16")]
+    /// Master packet timer period. The wire value is microseconds, valid
+    /// from 1000 to 65000 in increments of 1000.
+    #[br(map = |x: u16| Duration::from_micros(x as u64))]
+    #[bw(map = |x: &Duration| x.as_micros() as u16)]
+    #[serde(with = "duration_as_micros_u16")]
     pub packet_timer_period: Duration,
 }
 
