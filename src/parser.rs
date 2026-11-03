@@ -34,21 +34,22 @@ fn parse_packet(input: &[u8]) -> Result<Packet> {
 
     let packet_length = payload_length as usize + 5; // length in packet does not include header
 
-    // Ensure we have the complete packet
-    if input.len() < packet_length {
-        debug!("Don't have full packet, need {} bytes but have {}", packet_length, input.len());
-        return Err(ParseError::IncompleteData);
-    }
-
     // Extract CRC16 (last 2 bytes of header)
     let crc16 = u16::from_le_bytes([input[3], input[4]]);
 
-    // Validate header LRC
+    // Validate header LRC before waiting on the payload, so noise that
+    // claims a long length is rejected instead of stalling the scan
     let calculated_lrc = AnppProtocol::calculate_lrc(packet_id, payload_length, crc16);
     if header_lrc != calculated_lrc {
         debug!("Invalid header LRC for packet ID {}: expected {:#02x}, got {:#02x}",
                packet_id, calculated_lrc, header_lrc);
         return Err(ParseError::InvalidHeader);
+    }
+
+    // Ensure we have the complete packet
+    if input.len() < packet_length {
+        debug!("Don't have full packet, need {} bytes but have {}", packet_length, input.len());
+        return Err(ParseError::IncompleteData);
     }
 
     // Extract payload (everything between header and CRC16)
@@ -271,11 +272,6 @@ mod tests {
 
     #[test]
     fn test_last_raw_bytes_excludes_skipped_noise() {
-        // The parser checks a candidate header's claimed length before its
-        // LRC, so noise that puts a large value in the length position
-        // stalls the scan waiting for more data. One noise byte avoids
-        // that: the bogus header's length field lands on the frame's
-        // packet id, which is small.
         let frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
         let mut input = vec![0xFF];
         input.extend_from_slice(&frame);
@@ -286,6 +282,30 @@ mod tests {
         let packet = parser.consume(&input).expect("should parse the framed packet");
         assert!(matches!(packet, Packet::Request(_)));
         assert_eq!(parser.last_raw_bytes(), Some(frame.as_slice()));
+    }
+
+    #[test]
+    fn test_noise_claiming_long_length_does_not_stall() {
+        // Noise whose third byte claims a 200 byte payload, followed by a
+        // complete frame. The bogus header fails its LRC, so the frame
+        // should come out without waiting for 200 more bytes.
+        let frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        let mut input = vec![0x00, 0x00, 200];
+        input.extend_from_slice(&frame);
+
+        let mut parser = AnppParser::new();
+        let packet = parser.consume(&input).expect("should parse the framed packet");
+        assert!(matches!(packet, Packet::Request(_)));
+        assert_eq!(parser.last_raw_bytes(), Some(frame.as_slice()));
+        assert_eq!(parser.buffer_len(), 0);
+    }
+
+    #[test]
+    fn test_parse_datagram_truncated_with_invalid_lrc() {
+        let mut frame = AnppProtocol::get_packet_bytes(PacketId::new(1), &[20]).unwrap();
+        frame[0] ^= 0xFF; // corrupt LRC
+        frame.pop(); // and drop the payload
+        assert!(matches!(parse_datagram(&frame), Err(DatagramError::InvalidHeader)));
     }
 
     #[test]
