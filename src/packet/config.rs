@@ -71,9 +71,10 @@ pub enum AutomaticOffsetOrientation {
 }
 
 /// IP dataport mode enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum IpDataportMode {
+    #[default]
     Disabled = 0,
     TcpServer = 2,
     TcpClient = 3,
