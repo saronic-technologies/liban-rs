@@ -312,7 +312,8 @@ pub struct FilterOptions {
 /// GPIO configuration packet (Packet ID 188, Length 13) - Read/Write
 #[binrw]
 #[brw(little)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GpioConfiguration {
     /// Whether the configuration is saved to non-volatile memory
     #[br(map = |x: u8| x != 0)]

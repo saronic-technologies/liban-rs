@@ -18,9 +18,10 @@ pub enum GpioAuxFunctionType {
 }
 
 /// GPIO pin function selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum GpioFunction {
+    #[default]
     Inactive = 0,
     Pps1Output = 1,
     GnssFixOutput = 2,
@@ -92,9 +93,10 @@ impl GpioFunction {
 }
 
 /// Auxiliary RS232 port function selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum AuxiliaryFunction {
+    #[default]
     Inactive = 0,
     Pps1Output = 1,
     GnssFixOutput = 2,
@@ -165,10 +167,11 @@ impl AuxiliaryFunction {
 }
 
 /// GPIO logic voltage level for GpioConfiguration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum GpioVoltage {
     Volts5 = 0,
     Volts3_3 = 1,
+    #[default]
     PowerDisabled = 2,
 }
