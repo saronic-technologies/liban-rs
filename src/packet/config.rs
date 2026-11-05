@@ -71,9 +71,10 @@ pub enum AutomaticOffsetOrientation {
 }
 
 /// IP dataport mode enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum IpDataportMode {
+    #[default]
     Disabled = 0,
     TcpServer = 2,
     TcpClient = 3,
@@ -81,9 +82,10 @@ pub enum IpDataportMode {
 }
 
 /// Input mode for a serial port in GpioOutputConfiguration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum PortInputMode {
+    #[default]
     Inactive = 0,
     Nmea0183 = 6,
     Anpp = 11,
@@ -91,9 +93,10 @@ pub enum PortInputMode {
 }
 
 /// Output mode for a serial port in GpioOutputConfiguration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum PortOutputMode {
+    #[default]
     Inactive = 0,
     Nmea0183 = 7,
     Anpp = 12,
@@ -104,18 +107,20 @@ pub enum PortOutputMode {
 }
 
 /// NMEA fix behaviour for a port in GpioOutputConfiguration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum NmeaFixBehaviour {
+    #[default]
     Normal = 0,
     /// Always indicate 3D fix when the navigation filter is initialized
     AlwaysIndicate3dFix = 1,
 }
 
 /// Output rate for a single NMEA sentence on a port
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum PortOutputRate {
+    #[default]
     Disabled = 0,
     Rate0_1Hz = 1,
     Rate0_2Hz = 2,
@@ -308,7 +313,8 @@ pub struct FilterOptions {
 /// GPIO configuration packet (Packet ID 188, Length 13) - Read/Write
 #[binrw]
 #[brw(little)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GpioConfiguration {
     /// Whether the configuration is saved to non-volatile memory
     #[br(map = |x: u8| x != 0)]
@@ -373,8 +379,9 @@ pub struct ReferencePointOffsets {
 }
 
 /// NMEA sentence output rates for a single port
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
+#[serde(default)]
 pub struct NmeaOutputRates {
     /// GPZDA time and date rate
     pub gpzda: PortOutputRate,
@@ -411,7 +418,8 @@ pub struct NmeaOutputRates {
 /// Configuration for a single serial port in GpioOutputConfiguration
 #[binrw]
 #[brw(little)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PortConfiguration {
     /// Input mode for this port
     pub input_mode: PortInputMode,
