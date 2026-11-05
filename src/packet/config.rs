@@ -113,9 +113,10 @@ pub enum NmeaFixBehaviour {
 }
 
 /// Output rate for a single NMEA sentence on a port
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(repr = u8)]
 pub enum PortOutputRate {
+    #[default]
     Disabled = 0,
     Rate0_1Hz = 1,
     Rate0_2Hz = 2,
@@ -373,8 +374,9 @@ pub struct ReferencePointOffsets {
 }
 
 /// NMEA sentence output rates for a single port
-#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
+#[serde(default)]
 pub struct NmeaOutputRates {
     /// GPZDA time and date rate
     pub gpzda: PortOutputRate,
