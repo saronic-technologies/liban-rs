@@ -46,8 +46,8 @@ pub use packet::state::RawGnss;
 
 pub use packet::receiver::{
     AdvancedNavigationModel, GenericReceiverData, GnssManufacturer, GnssReceiverData,
-    OmnistarEngineMode, ReceiverType, RtkLicenseAccuracy, TrimbleBd992ReceiverData,
-    TrimbleModel, UBloxModel,
+    OmnistarEngineMode, ReceiverType, RtkLicenseAccuracy, SeptentrioModel,
+    TrimbleBd992ReceiverData, TrimbleModel, UBloxModel,
 };
 
 pub use packet::config::{

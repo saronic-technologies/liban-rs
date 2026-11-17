@@ -1,18 +1,18 @@
 use binrw::{binrw, BinRead, BinResult, BinWrite, Endian};
-use num_enum::FromPrimitive;
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
 
 /// Trimble receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 pub enum TrimbleModel {
-    #[default]
-    Unknown = 0,
     /// Trimble MB-Two
     MbTwo = 5,
     /// Trimble BD992
     Bd992 = 7,
+    #[num_enum(catch_all)]
+    Unknown(u8),
 }
 
 impl TrimbleModel {
@@ -27,24 +27,48 @@ impl TrimbleModel {
 
 /// u-blox receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 pub enum UBloxModel {
-    #[default]
-    Unknown = 0,
     /// u-blox NEO-F9P
     NeoF9P = 5,
+    #[num_enum(catch_all)]
+    Unknown(u8),
 }
 
 /// Advanced Navigation receiver model identifier
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 pub enum AdvancedNavigationModel {
-    #[default]
-    Unknown = 0,
     /// Aries GNSS receiver
     Aries = 1,
     /// Aries GC2 GNSS receiver
     AriesGc2 = 2,
+    /// Aries X20P GNSS receiver
+    AriesX20P = 5,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+/// Septentrio receiver model identifier
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+pub enum SeptentrioModel {
+    /// Septentrio mosaic-X5
+    MosaicX5 = 1,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+/// GNSS manufacturer identifier, the first byte of the 2-byte header
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive)]
+enum ManufacturerId {
+    Trimble = 1,
+    UBlox = 2,
+    AdvancedNavigation = 3,
+    Septentrio = 6,
+    #[num_enum(catch_all)]
+    Unknown(u8),
 }
 
 /// GNSS manufacturer and receiver model, encoded as a 2-byte header on the wire
@@ -54,6 +78,7 @@ pub enum GnssManufacturer {
     Trimble(TrimbleModel),
     UBlox(UBloxModel),
     AdvancedNavigation(AdvancedNavigationModel),
+    Septentrio(SeptentrioModel),
 }
 
 impl GnssManufacturer {
@@ -72,11 +97,14 @@ impl GnssManufacturer {
     ) -> BinResult<Self> {
         let manufacturer = u8::read_options(reader, endian, ())?;
         let model = u8::read_options(reader, endian, ())?;
-        Ok(match manufacturer {
-            1 => Self::Trimble(TrimbleModel::from(model)),
-            2 => Self::UBlox(UBloxModel::from(model)),
-            3 => Self::AdvancedNavigation(AdvancedNavigationModel::from(model)),
-            _ => Self::Unknown { manufacturer, model },
+        Ok(match ManufacturerId::from(manufacturer) {
+            ManufacturerId::Trimble => Self::Trimble(TrimbleModel::from(model)),
+            ManufacturerId::UBlox => Self::UBlox(UBloxModel::from(model)),
+            ManufacturerId::AdvancedNavigation => {
+                Self::AdvancedNavigation(AdvancedNavigationModel::from(model))
+            }
+            ManufacturerId::Septentrio => Self::Septentrio(SeptentrioModel::from(model)),
+            ManufacturerId::Unknown(_) => Self::Unknown { manufacturer, model },
         })
     }
 
@@ -88,9 +116,12 @@ impl GnssManufacturer {
     ) -> BinResult<()> {
         let (manufacturer, model) = match val {
             &Self::Unknown { manufacturer, model } => (manufacturer, model),
-            Self::Trimble(m) => (1, *m as u8),
-            Self::UBlox(m) => (2, *m as u8),
-            Self::AdvancedNavigation(m) => (3, *m as u8),
+            Self::Trimble(m) => (u8::from(ManufacturerId::Trimble), u8::from(*m)),
+            Self::UBlox(m) => (u8::from(ManufacturerId::UBlox), u8::from(*m)),
+            Self::AdvancedNavigation(m) => {
+                (u8::from(ManufacturerId::AdvancedNavigation), u8::from(*m))
+            }
+            Self::Septentrio(m) => (u8::from(ManufacturerId::Septentrio), u8::from(*m)),
         };
         manufacturer.write_options(writer, endian, ())?;
         model.write_options(writer, endian, ())
