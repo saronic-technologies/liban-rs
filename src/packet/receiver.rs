@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::io::{Read, Seek, Write};
 
 /// Trimble receiver model identifier
-#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum TrimbleModel {
     /// Trimble MB-Two
     MbTwo = 5,
@@ -26,8 +26,8 @@ impl TrimbleModel {
 }
 
 /// u-blox receiver model identifier
-#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum UBloxModel {
     /// u-blox NEO-F9P
     NeoF9P = 5,
@@ -36,8 +36,8 @@ pub enum UBloxModel {
 }
 
 /// Advanced Navigation receiver model identifier
-#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum AdvancedNavigationModel {
     /// Aries GNSS receiver
     Aries = 1,
@@ -50,8 +50,8 @@ pub enum AdvancedNavigationModel {
 }
 
 /// Septentrio receiver model identifier
-#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
 pub enum SeptentrioModel {
     /// Septentrio mosaic-X5
     MosaicX5 = 1,
@@ -60,8 +60,8 @@ pub enum SeptentrioModel {
 }
 
 /// GNSS manufacturer identifier, the first byte of the 2-byte header
-#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive)]
+#[repr(u8)]
 enum ManufacturerId {
     Trimble = 1,
     UBlox = 2,
