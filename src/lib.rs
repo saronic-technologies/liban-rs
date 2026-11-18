@@ -40,6 +40,7 @@ pub use packet::state::{
     GnssPositionVelocityTime, GnssOrientation,
     GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
     AidingSourceStatus, AidingSourceStatusField, AidingSourceOrigin,
+    FpgaStatus, SledStatus, FogStreamerStatus, FogStreamerError, FogAxisStatus, FogAxisError,
 };
 #[allow(deprecated)]
 pub use packet::state::RawGnss;

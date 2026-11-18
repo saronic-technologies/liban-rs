@@ -4,7 +4,7 @@ use super::{
 };
 use binrw::{binrw, BinRead, BinWrite};
 use bitflags::{bitflags, parser::WriteHex};
-use num_enum::FromPrimitive;
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -1318,6 +1318,81 @@ pub struct AidingSourceStatus {
     #[br(temp)]
     #[bw(calc = [0u8; 22])]
     _reserved: [u8; 22],
+}
+
+bitflags! {
+    /// Fiber-optic gyro light source status flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct SledStatus: u32 {
+        const TEMPERATURE_FAULT = 1 << 0;
+        const OUTPUT_POWER_FAULT = 1 << 1;
+        const TEC_WARNING = 1 << 2;
+    }
+}
+
+/// Last error of the fiber-optic gyro data stream
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum FogStreamerError {
+    NoFailure = 0,
+    SpiOverrun = 1,
+    DmaUnderrun = 2,
+    ChecksumMismatch = 3,
+    VersionMismatch = 4,
+    SyncWordWrong = 5,
+    SequenceError = 6,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+/// Last error of one fiber-optic gyro axis
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum FogAxisError {
+    NoFailure = 0,
+    SyncError = 1,
+    PositiveOverrange = 2,
+    NegativeOverrange = 3,
+    RangeFault = 4,
+    HardFault = 5,
+    NoSamples = 6,
+    Unspecified = 7,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+/// Error count and last error of the fiber-optic gyro data stream
+#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct FogStreamerStatus {
+    pub error_count: u32,
+    #[br(map = |x: u8| FogStreamerError::from(x))]
+    #[bw(map = |x: &FogStreamerError| u8::from(*x))]
+    pub last_error: FogStreamerError,
+}
+
+/// Error count and last error of one fiber-optic gyro axis
+#[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct FogAxisStatus {
+    pub error_count: u32,
+    #[br(map = |x: u8| FogAxisError::from(x))]
+    #[bw(map = |x: &FogAxisError| u8::from(*x))]
+    pub last_error: FogAxisError,
+}
+
+/// FPGA status packet (Packet ID 178, Length 24) - Read only
+///
+/// Health of the fiber-optic gyro hardware on FOG products such as Boreas.
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct FpgaStatus {
+    #[br(map = SledStatus::from_bits_retain)]
+    #[bw(map = |x: &SledStatus| x.bits())]
+    pub sled_status: SledStatus,
+    pub streamer: FogStreamerStatus,
+    /// One entry per gyro axis, X, Y and Z
+    pub fog_axes: [FogAxisStatus; 3],
 }
 
 #[cfg(test)]

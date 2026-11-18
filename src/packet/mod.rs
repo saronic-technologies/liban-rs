@@ -98,7 +98,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             AutomaticMagneticCalibrationStatus, ExternalSvs,
-            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus};
+            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus, FpgaStatus};
 use config::{AidingSourceConfiguration1, AidingSourceConfiguration2,
             BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
             GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
@@ -285,6 +285,9 @@ define_packets!(
     GnssPositionVelocityTime => 92, Fixed(76),
     GnssOrientation => 93, Fixed(36),
     AidingSourceStatus => 95, Fixed(64),
+
+    // FOG Status Packets (178)
+    FpgaStatus => 178, Fixed(24),
 
     // Configuration Packets (180-208)
     PacketTimerPeriod => 180, Fixed(4),
