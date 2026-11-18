@@ -7,8 +7,18 @@ use std::io::{Read, Seek, Write};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TrimbleModel {
+    /// Trimble BD920
+    Bd920 = 1,
+    /// Trimble BD930
+    Bd930 = 2,
+    /// Trimble BD982
+    Bd982 = 3,
+    /// Trimble MB-One
+    MbOne = 4,
     /// Trimble MB-Two
     MbTwo = 5,
+    /// Trimble BD940
+    Bd940 = 6,
     /// Trimble BD992
     Bd992 = 7,
     #[num_enum(catch_all)]
@@ -29,8 +39,18 @@ impl TrimbleModel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum UBloxModel {
+    /// u-blox ZED-M8
+    ZedM8 = 1,
+    /// u-blox ZED-M8T
+    ZedM8T = 2,
+    /// u-blox ZED-M8P
+    ZedM8P = 3,
+    /// u-blox ZED-F9P
+    ZedF9P = 4,
     /// u-blox NEO-F9P
     NeoF9P = 5,
+    /// u-blox ZED-X20P
+    ZedX20P = 6,
     #[num_enum(catch_all)]
     Unknown(u8),
 }
@@ -39,10 +59,14 @@ pub enum UBloxModel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum AdvancedNavigationModel {
-    /// Aries GNSS receiver
+    /// Original Aries GNSS receiver, a.k.a. Aries F9P
     Aries = 1,
     /// Aries GC2 GNSS receiver
     AriesGc2 = 2,
+    /// Aries SkyTraq Orion B16 GNSS receiver
+    AriesSkyTraqOrionB16 = 3,
+    /// Aries SkyTraq PX1172RH GNSS receiver
+    AriesSkyTraqPx1172Rh = 4,
     /// Aries X20P GNSS receiver
     AriesX20P = 5,
     #[num_enum(catch_all)]
