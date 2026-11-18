@@ -1,5 +1,6 @@
 use super::PacketKind;
 use binrw::{binrw, BinRead, BinWrite};
+use bitflags::bitflags;
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
@@ -199,6 +200,37 @@ pub struct SerialPortPassthrough {
     pub data: Vec<u8>,
 }
 
+/// Ethernet link mode
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum LinkMode {
+    Auto = 0,
+    Full100Mb = 1,
+    Half100Mb = 2,
+    Full10Mb = 3,
+    Half10Mb = 4,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+bitflags! {
+    /// DHCP mode flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct DhcpMode: u8 {
+        const DHCP_ENABLED = 1 << 0;
+        const AUTOMATIC_DNS = 1 << 1;
+        /// Mask for the link mode in bits 2-4, decoded by [`Self::link_mode`]
+        const LINK_MODE_MASK = 0b0111 << Self::LINK_MODE_OFFSET;
+    }
+}
+
+impl DhcpMode {
+    const LINK_MODE_OFFSET: u32 = 2;
+
+    pub fn from_link_mode(mode: LinkMode) -> Self { Self::from_bits_retain(u8::from(mode) << Self::LINK_MODE_OFFSET) }
+    pub fn link_mode(&self) -> LinkMode { LinkMode::from(self.intersection(Self::LINK_MODE_MASK).bits() >> Self::LINK_MODE_OFFSET) }
+}
+
 /// IP configuration packet (Packet ID 11, Length 30) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
@@ -206,7 +238,9 @@ pub struct IpConfiguration {
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
-    pub dhcp_mode: u8,
+    #[br(map = DhcpMode::from_bits_retain)]
+    #[bw(map = |x: &DhcpMode| x.bits())]
+    pub dhcp_mode: DhcpMode,
     pub ip_address: u32,
     pub ip_netmask: u32,
     pub ip_gateway: u32,
@@ -382,7 +416,7 @@ mod tests {
     fn test_ip_configuration_round_trip() {
         let ip = IpConfiguration {
             permanent: true,
-            dhcp_mode: 0,
+            dhcp_mode: DhcpMode::empty(),
             ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 100)),
             ip_netmask: u32::from(std::net::Ipv4Addr::new(255, 255, 255, 0)),
             ip_gateway: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)),

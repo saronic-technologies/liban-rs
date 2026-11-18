@@ -2,7 +2,7 @@
 mod tests {
     use crate::packet::system::{
         Acknowledge, AcknowledgeResult, Request, BootMode,
-        DeviceInformation, DeviceType, RestoreFactorySettings,
+        DeviceInformation, DeviceType, DhcpMode, RestoreFactorySettings,
         Reset, ResetMode, IpConfiguration
     };
     use crate::packet::PacketKind;
@@ -89,7 +89,7 @@ mod tests {
     fn test_ip_configuration_packet_length() {
         let packet = IpConfiguration {
             permanent: true,
-            dhcp_mode: 0,
+            dhcp_mode: DhcpMode::empty(),
             ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 100)),
             ip_netmask: u32::from(std::net::Ipv4Addr::new(255, 255, 255, 0)),
             ip_gateway: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)),
@@ -139,7 +139,7 @@ mod tests {
         // IpConfiguration round-trip
         let ip_original = IpConfiguration {
             permanent: false,
-            dhcp_mode: 1,
+            dhcp_mode: DhcpMode::DHCP_ENABLED,
             ip_address: 0,
             ip_netmask: 0,
             ip_gateway: 0,

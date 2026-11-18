@@ -155,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("IP CONFIGURATION");
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("  Permanent:   {}", ip_config.permanent);
-                        println!("  DHCP Mode:   {}", ip_config.dhcp_mode);
+                        println!("  DHCP Mode:   {:?}, link {:?}", ip_config.dhcp_mode, ip_config.dhcp_mode.link_mode());
                         println!("  IP Address:  {}.{}.{}.{}",
                                  (ip_config.ip_address >> 24) & 0xFF,
                                  (ip_config.ip_address >> 16) & 0xFF,
