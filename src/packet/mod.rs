@@ -98,7 +98,7 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             AutomaticMagneticCalibrationStatus, ExternalSvs,
-            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus, FpgaStatus};
+            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus, Biases, FpgaStatus};
 use config::{AidingSourceConfiguration1, AidingSourceConfiguration2,
             BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
             GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
@@ -274,6 +274,7 @@ define_packets!(
     NorthSeekingInitialisationStatus => 71, Fixed(28),
     GimbalState => 72, Fixed(8),
     Automotive => 73, Fixed(24),
+    Biases => 74, Fixed(85),
     ExternalMagnetometers => 75, Fixed(17),
     ZeroAngularVelocity => 83, Fixed(8),
     ExtendedSatellites => 84, Variable,

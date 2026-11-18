@@ -1320,6 +1320,37 @@ pub struct AidingSourceStatus {
     _reserved: [u8; 22],
 }
 
+/// Biases packet (Packet ID 74, Length 85) - Read only
+///
+/// The navigation filter's bias estimates, update counts and measurement
+/// rejection counters.
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Biases {
+    pub accelerometer_bias: [f32; 3],
+    pub accelerometer_bias_std: [f32; 3],
+    pub gyroscope_bias: [f32; 3],
+    pub gyroscope_bias_std: [f32; 3],
+    /// Estimated sea-level reference pressure for barometric altitude
+    pub qnh: f32,
+    pub qnh_std: f32,
+    pub x_axis_velocity_integration: f32,
+    pub motion_analysis_zero_angular_rate_update_count: u16,
+    pub motion_analysis_zero_velocity_update_count: u16,
+    pub magnetometer_zero_angular_rate_update_count: u16,
+    pub accelerometer_roll_update: f32,
+    pub accelerometer_pitch_update: f32,
+    pub accelerometer_std: f32,
+    pub accelerometer_rejection_counter: u8,
+    pub heading_rejection_counter: u8,
+    pub roll_pitch_rejection_counter: u8,
+    pub gyroscope_bias_rejection_counter: u8,
+    pub position_rejection_counter: u8,
+    pub velocity_rejection_counter: u8,
+    pub accelerometer_bias_rejection_counter: u8,
+}
+
 bitflags! {
     /// Fiber-optic gyro light source status flags
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
