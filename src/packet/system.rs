@@ -3,6 +3,7 @@ use binrw::{binrw, BinRead, BinWrite};
 use bitflags::bitflags;
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
+use std::net::Ipv4Addr;
 
 /// Acknowledge result codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
@@ -241,10 +242,18 @@ pub struct IpConfiguration {
     #[br(map = DhcpMode::from_bits_retain)]
     #[bw(map = |x: &DhcpMode| x.bits())]
     pub dhcp_mode: DhcpMode,
-    pub ip_address: u32,
-    pub ip_netmask: u32,
-    pub ip_gateway: u32,
-    pub dns_server: u32,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_address: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_netmask: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_gateway: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub dns_server: Ipv4Addr,
     pub boreas_serial_number_part_1: u32,
     pub boreas_serial_number_part_2: u32,
     pub boreas_serial_number_part_3: u32,
@@ -417,10 +426,10 @@ mod tests {
         let ip = IpConfiguration {
             permanent: true,
             dhcp_mode: DhcpMode::empty(),
-            ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 100)),
-            ip_netmask: u32::from(std::net::Ipv4Addr::new(255, 255, 255, 0)),
-            ip_gateway: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)),
-            dns_server: u32::from(std::net::Ipv4Addr::new(8, 8, 8, 8)),
+            ip_address: Ipv4Addr::new(192, 168, 1, 100),
+            ip_netmask: Ipv4Addr::new(255, 255, 255, 0),
+            ip_gateway: Ipv4Addr::new(192, 168, 1, 1),
+            dns_server: Ipv4Addr::new(8, 8, 8, 8),
             boreas_serial_number_part_1: 123456,
             boreas_serial_number_part_2: 789012,
             boreas_serial_number_part_3: 345678,

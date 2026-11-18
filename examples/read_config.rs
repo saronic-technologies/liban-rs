@@ -156,26 +156,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         println!("  Permanent:   {}", ip_config.permanent);
                         println!("  DHCP Mode:   {:?}, link {:?}", ip_config.dhcp_mode, ip_config.dhcp_mode.link_mode());
-                        println!("  IP Address:  {}.{}.{}.{}",
-                                 (ip_config.ip_address >> 24) & 0xFF,
-                                 (ip_config.ip_address >> 16) & 0xFF,
-                                 (ip_config.ip_address >> 8) & 0xFF,
-                                 ip_config.ip_address & 0xFF);
-                        println!("  Netmask:     {}.{}.{}.{}",
-                                 (ip_config.ip_netmask >> 24) & 0xFF,
-                                 (ip_config.ip_netmask >> 16) & 0xFF,
-                                 (ip_config.ip_netmask >> 8) & 0xFF,
-                                 ip_config.ip_netmask & 0xFF);
-                        println!("  Gateway:     {}.{}.{}.{}",
-                                 (ip_config.ip_gateway >> 24) & 0xFF,
-                                 (ip_config.ip_gateway >> 16) & 0xFF,
-                                 (ip_config.ip_gateway >> 8) & 0xFF,
-                                 ip_config.ip_gateway & 0xFF);
-                        println!("  DNS Server:  {}.{}.{}.{}",
-                                 (ip_config.dns_server >> 24) & 0xFF,
-                                 (ip_config.dns_server >> 16) & 0xFF,
-                                 (ip_config.dns_server >> 8) & 0xFF,
-                                 ip_config.dns_server & 0xFF);
+                        println!("  IP Address:  {}", ip_config.ip_address);
+                        println!("  Netmask:     {}", ip_config.ip_netmask);
+                        println!("  Gateway:     {}", ip_config.ip_gateway);
+                        println!("  DNS Server:  {}", ip_config.dns_server);
                         println!();
                     }
 
@@ -239,11 +223,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                         for (i, dataport) in dataports.dataports.iter().enumerate() {
                             println!("  Dataport {}:", i);
-                            println!("    IP:   {}.{}.{}.{}",
-                                     (dataport.ip_address >> 24) & 0xFF,
-                                     (dataport.ip_address >> 16) & 0xFF,
-                                     (dataport.ip_address >> 8) & 0xFF,
-                                     dataport.ip_address & 0xFF);
+                            println!("    IP:   {}", dataport.ip_address);
                             println!("    Port: {}", dataport.port);
                             println!("    Mode: {:?}", dataport.mode);
                         }

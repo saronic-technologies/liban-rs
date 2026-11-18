@@ -2,7 +2,7 @@ use crate::packet::{HasPacketId, PacketKind, gpio::{AuxiliaryFunction, GpioFunct
 use binrw::{binrw, BinRead, BinWrite};
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{net::Ipv4Addr, time::Duration};
 
 /// 3D offset vector for installation alignment
 #[derive(Debug, Clone, Copy, Default, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
@@ -514,7 +514,9 @@ pub struct GpioOutputConfiguration {
 #[derive(Debug, Clone, Copy, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
 pub struct IpDataport {
-    pub ip_address: u32,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_address: Ipv4Addr,
     pub port: u16,
     pub mode: IpDataportMode,
 }

@@ -7,6 +7,7 @@ mod tests {
     };
     use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
+    use std::net::Ipv4Addr;
 
     #[test]
     fn test_acknowledge_packet_length() {
@@ -90,10 +91,10 @@ mod tests {
         let packet = IpConfiguration {
             permanent: true,
             dhcp_mode: DhcpMode::empty(),
-            ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 100)),
-            ip_netmask: u32::from(std::net::Ipv4Addr::new(255, 255, 255, 0)),
-            ip_gateway: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)),
-            dns_server: u32::from(std::net::Ipv4Addr::new(8, 8, 8, 8)),
+            ip_address: Ipv4Addr::new(192, 168, 1, 100),
+            ip_netmask: Ipv4Addr::new(255, 255, 255, 0),
+            ip_gateway: Ipv4Addr::new(192, 168, 1, 1),
+            dns_server: Ipv4Addr::new(8, 8, 8, 8),
             boreas_serial_number_part_1: 123456,
             boreas_serial_number_part_2: 789012,
             boreas_serial_number_part_3: 345678,
@@ -140,10 +141,10 @@ mod tests {
         let ip_original = IpConfiguration {
             permanent: false,
             dhcp_mode: DhcpMode::DHCP_ENABLED,
-            ip_address: 0,
-            ip_netmask: 0,
-            ip_gateway: 0,
-            dns_server: 0,
+            ip_address: Ipv4Addr::UNSPECIFIED,
+            ip_netmask: Ipv4Addr::UNSPECIFIED,
+            ip_gateway: Ipv4Addr::UNSPECIFIED,
+            dns_server: Ipv4Addr::UNSPECIFIED,
             boreas_serial_number_part_1: 111111,
             boreas_serial_number_part_2: 222222,
             boreas_serial_number_part_3: 333333,
