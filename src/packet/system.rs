@@ -233,9 +233,10 @@ pub struct ExtendedDeviceInformation {
     pub serial_number: [u32; 3],
     /// Device sub-type
     pub device_sub_type: u32,
-    #[br(temp)]
-    #[bw(calc = [0u8; 8])]
-    _reserved: [u8; 8],
+    /// Bootloader software version
+    pub bootloader_software_version: u32,
+    /// Navigation filter version
+    pub navigation_filter_version: u32,
 }
 
 /// Subcomponent device identifier
