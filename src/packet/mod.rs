@@ -79,7 +79,7 @@ where
 // Import packet types from their respective modules
 use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
             IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
-            SubcomponentInformation};
+            SubcomponentInformation, SubcomponentUpdateStatus};
 #[allow(deprecated)]
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
@@ -215,7 +215,7 @@ macro_rules! define_packets {
 }
 
 define_packets!(
-    // System Packets (0-14)
+    // System Packets (0-15)
     Acknowledge => 0, Fixed(4),
     Request => 1, Fixed(1),
     BootMode => 2, Fixed(1),
@@ -226,6 +226,7 @@ define_packets!(
     IpConfiguration => 11, Fixed(30),
     ExtendedDeviceInformation => 13, Fixed(36),
     SubcomponentInformation => 14, Variable,
+    SubcomponentUpdateStatus => 15, Fixed(8),
 
     // State Packets (20-95)
     SystemState => 20, Fixed(100),

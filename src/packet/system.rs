@@ -226,6 +226,22 @@ pub struct SubcomponentInformation {
     pub subcomponents: Vec<SubcomponentEntry>,
 }
 
+/// Subcomponent update status packet (Packet ID 15, Length 8) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SubcomponentUpdateStatus {
+    /// Boot mode, in the encoding of the boot mode packet
+    pub boot_mode: u8,
+    /// Number of subcomponents being updated. Zero means no update is in progress.
+    pub number_subcomponents_updating: u8,
+    /// Progress of the update in percent
+    pub percent_complete: u8,
+    #[br(temp)]
+    #[bw(calc = [0u8; 5])]
+    _reserved: [u8; 5],
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
