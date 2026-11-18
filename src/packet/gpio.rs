@@ -82,11 +82,23 @@ impl GpioFunction {
             Self::NmeaOutput
             | Self::AnppOutput
             | Self::Tss1Output
+            | Self::Simrad1000Output
+            | Self::Simrad3000Output
             | Self::NortekNucleusDvlOutput => GpioFunctionType::Gpio1,
-            Self::NovatelGnssInput
+            Self::NmeaInput
+            | Self::NovatelGnssInput
+            | Self::TopconGnssInput
+            | Self::AnppInput
             | Self::RtcmCorrectionsInput
+            | Self::TrimbleGnssInput
+            | Self::UBloxGnssInput
+            | Self::HemisphereGnssInput
+            | Self::TeledyneDvlInput
+            | Self::TritechUsblInput
+            | Self::LinkquestDvlInput
             | Self::NortekDvlInput
             | Self::WaterLinkedDvlInput
+            | Self::NortekNucleusDvlInput
             | Self::ValeportSvsInput
             | Self::SeptentrioGnssInput => GpioFunctionType::Gpio2,
             _ => GpioFunctionType::Both,
@@ -154,15 +166,48 @@ impl AuxiliaryFunction {
     pub fn function_type(self) -> GpioAuxFunctionType {
         match self {
             Self::Pps1Output
+            | Self::GnssFixOutput
             | Self::NmeaOutput
             | Self::AnppOutput
             | Self::Tss1Output
+            | Self::Simrad1000Output
+            | Self::Simrad3000Output
             | Self::NortekNucleusDvlOutput => GpioAuxFunctionType::Transmit,
             Self::OdometerInput
+            | Self::ZeroVelocityInput
+            | Self::PitotTubeInput
+            | Self::NmeaInput
             | Self::NovatelGnssInput
+            | Self::TopconGnssInput
+            | Self::AnppInput
             | Self::DisableGnss
+            | Self::DisablePressure
+            | Self::SetZeroOrientationAlignment
+            | Self::SystemStatePacketTrigger
+            | Self::RawSensorsPacketTrigger
+            | Self::RtcmCorrectionsInput
+            | Self::TrimbleGnssInput
+            | Self::UBloxGnssInput
+            | Self::HemisphereGnssInput
+            | Self::TeledyneDvlInput
+            | Self::TritechUsblInput
+            | Self::LinkquestDvlInput
+            | Self::PressureDepthTransducer
+            | Self::LeftWheelSpeedSensor
+            | Self::RightWheelSpeedSensor
+            | Self::Pps1Input
+            | Self::WheelSpeedSensor
+            | Self::Event1Input
+            | Self::Event2Input
+            | Self::LinkquestUsblInput
             | Self::OdometerDirectionForwardLow
             | Self::OdometerDirectionForwardHigh
+            | Self::NortekDvlInput
+            | Self::ReverseAlignmentForwardLow
+            | Self::ReverseAlignmentForwardHigh
+            | Self::ZeroAngularVelocityInput
+            | Self::WaterLinkedDvlInput
+            | Self::NortekNucleusDvlInput
             | Self::ValeportSvsInput
             | Self::SeptentrioGnssInput => GpioAuxFunctionType::Receive,
             _ => GpioAuxFunctionType::Both,
