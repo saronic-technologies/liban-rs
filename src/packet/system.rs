@@ -239,14 +239,25 @@ pub struct ExtendedDeviceInformation {
 }
 
 /// Subcomponent device identifier
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum SubcomponentDeviceId {
-    #[default]
-    Unknown = 0,
     SpatialMemsImu = 5,
     EvoMemsImu = 17,
     Aries = 27,
+    Boreas90Fpga = 35,
+    Boreas90Coil = 36,
+    BoreasX90Fpga = 39,
+    Boreas70Coil = 40,
+    Boreas70Fpga = 42,
+    Boreas50Fpga = 55,
+    Boreas50Coil = 57,
+    Boreas50PdAssem = 63,
+    Boreas50SledAssem = 64,
+    Boreas50CoilAssem = 65,
+    Boreas50ImuAssem = 66,
+    #[num_enum(catch_all)]
+    Unknown(u32),
 }
 
 /// Single subcomponent entry within SubcomponentInformation
@@ -257,7 +268,7 @@ pub struct SubcomponentEntry {
     pub software_version: u32,
     /// Subcomponent device identifier
     #[br(map = |x: u32| SubcomponentDeviceId::from(x))]
-    #[bw(map = |x: &SubcomponentDeviceId| *x as u32)]
+    #[bw(map = |x: &SubcomponentDeviceId| u32::from(*x))]
     pub device_id: SubcomponentDeviceId,
     /// Subcomponent hardware revision
     pub hardware_revision: u32,
