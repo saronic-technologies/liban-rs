@@ -103,7 +103,7 @@ use config::{AidingSourceConfiguration1, AidingSourceConfiguration2,
             BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
             GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
             InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
-            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
+            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets, SensorRanges,
             SetZeroOrientationAlignment, UserData};
 
 macro_rules! define_packets {
@@ -289,6 +289,7 @@ define_packets!(
     PacketTimerPeriod => 180, Fixed(4),
     PacketsPeriod => 181, Variable,
     BaudRates => 182, Fixed(17),
+    SensorRanges => 184, Fixed(4),
     InstallationAlignment => 185, Fixed(73),
     FilterOptions => 186, Fixed(17),
     GpioConfiguration => 188, Fixed(13),
@@ -376,6 +377,7 @@ impl Packet {
             Packet::GnssPositionVelocityTime(_) | Packet::GnssOrientation(_) |
             Packet::AidingSourceStatus(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
+            Packet::SensorRanges(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
             Packet::GpioConfiguration(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |

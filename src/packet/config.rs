@@ -259,6 +259,57 @@ pub struct BaudRates {
     _reserved: [u8; 4],
 }
 
+/// Accelerometer measurement range
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum AccelerometerRange {
+    /// ±2 g
+    G2 = 0,
+    /// ±4 g
+    G4 = 1,
+    /// ±16 g
+    G16 = 2,
+}
+
+/// Gyroscope measurement range
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum GyroscopeRange {
+    /// ±250 °/s
+    Dps250 = 0,
+    /// ±500 °/s
+    Dps500 = 1,
+    /// ±2000 °/s
+    Dps2000 = 2,
+}
+
+/// Magnetometer measurement range
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(repr = u8)]
+pub enum MagnetometerRange {
+    /// ±2 G
+    Gauss2 = 0,
+    /// ±4 G
+    Gauss4 = 1,
+    /// ±8 G
+    Gauss8 = 2,
+}
+
+/// Sensor ranges packet (Packet ID 184, Length 4) - Read/Write
+///
+/// Only some products, such as Certus, accept a new range. The Boreas
+/// products have fixed ranges.
+#[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
+#[brw(little)]
+pub struct SensorRanges {
+    #[br(map = |x: u8| x != 0)]
+    #[bw(map = |x: &bool| *x as u8)]
+    pub permanent: bool,
+    pub accelerometers_range: AccelerometerRange,
+    pub gyroscopes_range: GyroscopeRange,
+    pub magnetometers_range: MagnetometerRange,
+}
+
 /// Installation alignment packet (Packet ID 185, Length 73) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]

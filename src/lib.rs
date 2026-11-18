@@ -53,6 +53,7 @@ pub use packet::receiver::{
 pub use packet::config::{
     PacketPeriod, PacketTimerPeriod, PacketsPeriod, OffsetVector,
     InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
+    AccelerometerRange, GyroscopeRange, MagnetometerRange, SensorRanges,
     SetZeroOrientationAlignment, ReferencePointOffsets, UserData,
     IpDataportMode, IpDataport, IpDataportsConfiguration,
     AidingSourceBitmask1, AidingSourceBitmask2,
