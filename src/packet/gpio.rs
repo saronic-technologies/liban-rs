@@ -73,6 +73,7 @@ pub enum GpioFunction {
     NortekNucleusDvlInput = 63,
     NortekNucleusDvlOutput = 64,
     ValeportSvsInput = 65,
+    SeptentrioGnssInput = 66,
 }
 
 impl GpioFunction {
@@ -86,7 +87,8 @@ impl GpioFunction {
             | Self::RtcmCorrectionsInput
             | Self::NortekDvlInput
             | Self::WaterLinkedDvlInput
-            | Self::ValeportSvsInput => GpioFunctionType::Gpio2,
+            | Self::ValeportSvsInput
+            | Self::SeptentrioGnssInput => GpioFunctionType::Gpio2,
             _ => GpioFunctionType::Both,
         }
     }
@@ -145,6 +147,7 @@ pub enum AuxiliaryFunction {
     NortekNucleusDvlInput = 63,
     NortekNucleusDvlOutput = 64,
     ValeportSvsInput = 65,
+    SeptentrioGnssInput = 66,
 }
 
 impl AuxiliaryFunction {
@@ -160,7 +163,8 @@ impl AuxiliaryFunction {
             | Self::DisableGnss
             | Self::OdometerDirectionForwardLow
             | Self::OdometerDirectionForwardHigh
-            | Self::ValeportSvsInput => GpioAuxFunctionType::Receive,
+            | Self::ValeportSvsInput
+            | Self::SeptentrioGnssInput => GpioAuxFunctionType::Receive,
             _ => GpioAuxFunctionType::Both,
         }
     }
