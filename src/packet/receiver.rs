@@ -1,3 +1,4 @@
+use super::{ascii_from_padded, padded_from_ascii};
 use binrw::{binrw, BinRead, BinResult, BinWrite, Endian};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
@@ -196,7 +197,9 @@ pub enum RtkLicenseAccuracy {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TrimbleBd992ReceiverData {
     /// Serial number as ASCII string (10 bytes)
-    pub serial_number: [u8; 10],
+    #[br(map = |x: [u8; 10]| ascii_from_padded(x))]
+    #[bw(map = |x: &String| padded_from_ascii::<10>(x))]
+    pub serial_number: String,
     /// Firmware version
     pub firmware_version: u32,
     /// Software license code
@@ -222,7 +225,9 @@ pub struct TrimbleBd992ReceiverData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GenericReceiverData {
     /// Serial number as ASCII string (24 bytes)
-    pub serial_number: [u8; 24],
+    #[br(map = |x: [u8; 24]| ascii_from_padded(x))]
+    #[bw(map = |x: &String| padded_from_ascii::<24>(x))]
+    pub serial_number: String,
     /// Firmware version
     pub firmware_version: u32,
     /// Hardware version

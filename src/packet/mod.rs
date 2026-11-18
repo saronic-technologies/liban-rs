@@ -76,6 +76,20 @@ where
     data.iter().try_for_each(|item| item.write_options(writer, endian, ()))
 }
 
+/// Decodes a fixed-length ASCII field that the device pads with zero bytes.
+pub(crate) fn ascii_from_padded<const N: usize>(bytes: [u8; N]) -> String {
+    let len = bytes.iter().position(|&b| b == 0).unwrap_or(N);
+    String::from_utf8_lossy(&bytes[..len]).into_owned()
+}
+
+/// Encodes text into a fixed-length field, truncated to `N` bytes and padded with zero bytes.
+pub(crate) fn padded_from_ascii<const N: usize>(text: &str) -> [u8; N] {
+    let mut bytes = [0u8; N];
+    let len = text.len().min(N);
+    bytes[..len].copy_from_slice(&text.as_bytes()[..len]);
+    bytes
+}
+
 // Import packet types from their respective modules
 use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
             IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
