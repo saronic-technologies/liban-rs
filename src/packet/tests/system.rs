@@ -2,7 +2,7 @@
 mod tests {
     use crate::packet::system::{
         Acknowledge, AcknowledgeResult, Request, BootMode,
-        DeviceInformation, RestoreFactorySettings,
+        DeviceInformation, DeviceType, RestoreFactorySettings,
         Reset, ResetMode, IpConfiguration
     };
     use crate::packet::PacketKind;
@@ -48,7 +48,7 @@ mod tests {
     fn test_device_information_packet_length() {
         let packet = DeviceInformation {
             software_version: 0x01020304,
-            device_type: crate::packet::system::DeviceType::Unknown,
+            device_type: DeviceType::Unknown(0),
             hardware_revision: 0x090A0B0C,
             serial_number_1: 111111,
             serial_number_2: 222222,
@@ -123,7 +123,7 @@ mod tests {
         // DeviceInformation round-trip
         let dev_original = DeviceInformation {
             software_version: 0x12345678,
-            device_type: crate::packet::system::DeviceType::Certus,
+            device_type: DeviceType::Certus,
             hardware_revision: 0xDEADBEEF,
             serial_number_1: 987654,
             serial_number_2: 321098,

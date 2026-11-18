@@ -1,6 +1,6 @@
 use super::PacketKind;
 use binrw::{binrw, BinRead, BinWrite};
-use num_enum::FromPrimitive;
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
 /// Acknowledge result codes
@@ -55,33 +55,81 @@ pub struct BootMode {
 }
 
 /// Advanced Navigation device type
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum DeviceType {
-    #[default]
-    Unknown = 0,
     Spatial = 1,
+    ProductionSystem = 2,
+    Orientus = 3,
     SpatialFog = 4,
     SpatialDual = 5,
-    Orientus = 11,
+    Sublocus = 6,
+    SublocusDvl = 7,
+    SportsTracker = 8,
+    SublocusDvlRti = 9,
+    ObdiiOdometer = 10,
+    OrientusV3P = 11,
+    Ilu = 12,
     AirDataUnit = 13,
     Subsonus = 14,
+    UwbAnchor = 15,
     SpatialFogDual = 16,
     Motus = 17,
     GnssCompass = 19,
+    SubsonusIns = 20,
     SubsonusTag = 21,
     Poseidon = 22,
+    Navigo = 23,
+    BleDongle = 24,
+    SubsonusArray = 25,
     Certus = 26,
+    Aries = 27,
     BoreasD90 = 28,
+    SubsonusTagInterface = 29,
+    Hydrus = 30,
+    HydrusVision = 31,
+    HydrusTag = 32,
+    HydrusEsc = 33,
+    HydrusSystemControl = 34,
+    Boreas90Fpga = 35,
+    Boreas90Coil = 36,
+    PdrDagr = 37,
+    BoreasX90 = 38,
+    BoreasX90Fpga = 39,
+    Boreas70Coil = 40,
     BoreasD70 = 41,
+    Boreas70Fpga = 42,
     BoreasA90 = 43,
     BoreasA70 = 44,
+    Cgconnect = 45,
+    Reserved1 = 46,
+    Reserved2 = 47,
+    Reserved3 = 48,
     CertusMiniA = 49,
     CertusMiniN = 50,
     CertusMiniD = 51,
+    HydrusBattery = 52,
+    Bob = 53,
     BoreasD50 = 54,
+    Boreas50Fpga = 55,
     BoreasA50 = 56,
+    Boreas50Coil = 57,
+    Gl2MemsCalBoard = 58,
+    Lvs1 = 60,
+    LvsProcessor = 61,
+    LvsOpticalLand = 62,
+    Boreas50PdAssem = 63,
+    Boreas50SledAssem = 64,
+    Boreas50CoilAssem = 65,
+    Boreas50ImuAssem = 66,
+    Lvs2 = 67,
+    LvsOpticalAir = 68,
     AirDataUnit2 = 69,
+    Chimera1PassiveOptics = 70,
+    BoreasA90Nuwc = 71,
+    LoggingUnit = 9999,
+    #[num_enum(catch_all)]
+    Unknown(u32),
 }
 
 /// Device information packet (Packet ID 3, Length 24) - Read only
@@ -90,7 +138,7 @@ pub enum DeviceType {
 pub struct DeviceInformation {
     pub software_version: u32,
     #[br(map = |x: u32| DeviceType::from(x))]
-    #[bw(map = |x: &DeviceType| *x as u32)]
+    #[bw(map = |x: &DeviceType| u32::from(*x))]
     pub device_type: DeviceType,
     pub hardware_revision: u32,
     pub serial_number_1: u32,
@@ -177,7 +225,7 @@ pub struct ExtendedDeviceInformation {
     pub software_version: u32,
     /// Device type identifier
     #[br(map = |x: u32| DeviceType::from(x))]
-    #[bw(map = |x: &DeviceType| *x as u32)]
+    #[bw(map = |x: &DeviceType| u32::from(*x))]
     pub device_id: DeviceType,
     /// Hardware revision
     pub hardware_revision: u32,
