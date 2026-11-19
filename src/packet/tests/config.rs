@@ -12,7 +12,7 @@ mod tests {
     };
     use crate::packet::PacketKind;
     use binrw::{BinRead, BinWrite};
-    use std::time::Duration;
+    use std::{net::Ipv4Addr, time::Duration};
 
     #[test]
     fn test_packet_timer_period_packet_length() {
@@ -167,13 +167,13 @@ mod tests {
     #[test]
     fn test_ip_dataports_configuration_packet_length() {
         let disabled_entry = IpDataport {
-            ip_address: 0,
+            ip_address: Ipv4Addr::UNSPECIFIED,
             port: 0,
             mode: IpDataportMode::Disabled,
         };
 
         let tcp_server_entry = IpDataport {
-            ip_address: 0,
+            ip_address: Ipv4Addr::UNSPECIFIED,
             port: 17000,
             mode: IpDataportMode::TcpServer,
         };
@@ -192,10 +192,10 @@ mod tests {
     fn test_ip_dataports_configuration_packet_round_trip() {
         let original = IpDataportsConfiguration {
             dataports: [
-                IpDataport { ip_address: 0, port: 0, mode: IpDataportMode::Disabled },
-                IpDataport { ip_address: 0, port: 8080, mode: IpDataportMode::TcpServer },
-                IpDataport { ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)), port: 9090, mode: IpDataportMode::TcpClient },
-                IpDataport { ip_address: u32::from(std::net::Ipv4Addr::new(172, 16, 0, 1)), port: 5000, mode: IpDataportMode::UdpClient },
+                IpDataport { ip_address: Ipv4Addr::UNSPECIFIED, port: 0, mode: IpDataportMode::Disabled },
+                IpDataport { ip_address: Ipv4Addr::UNSPECIFIED, port: 8080, mode: IpDataportMode::TcpServer },
+                IpDataport { ip_address: Ipv4Addr::new(192, 168, 1, 1), port: 9090, mode: IpDataportMode::TcpClient },
+                IpDataport { ip_address: Ipv4Addr::new(172, 16, 0, 1), port: 5000, mode: IpDataportMode::UdpClient },
             ],
         };
 

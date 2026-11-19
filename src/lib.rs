@@ -16,7 +16,7 @@ pub use parser::{AnppParser, parse_datagram, DatagramError};
 // Re-export all public types from packet modules
 pub use packet::system::{
     Acknowledge, AcknowledgeResult, Request, BootMode, DeviceInformation, DeviceType,
-    RestoreFactorySettings, Reset, ResetMode, IpConfiguration,
+    RestoreFactorySettings, Reset, ResetMode, IpConfiguration, DhcpMode, LinkMode,
 };
 
 pub use packet::state::{
@@ -40,6 +40,7 @@ pub use packet::state::{
     GnssPositionVelocityTime, GnssOrientation,
     GnssPvtStatus, GnssOrientationStatus, SpoofingStatus, InterferenceStatus,
     AidingSourceStatus, AidingSourceStatusField, AidingSourceOrigin,
+    Biases, FpgaStatus, SledStatus, FogStreamerStatus, FogStreamerError, FogAxisStatus, FogAxisError,
 };
 #[allow(deprecated)]
 pub use packet::state::RawGnss;
@@ -53,6 +54,7 @@ pub use packet::receiver::{
 pub use packet::config::{
     PacketPeriod, PacketTimerPeriod, PacketsPeriod, OffsetVector,
     InstallationAlignment, VehicleType, FilterOptions, OdometerConfiguration,
+    AccelerometerRange, GyroscopeRange, MagnetometerRange, SensorRanges,
     SetZeroOrientationAlignment, ReferencePointOffsets, UserData,
     IpDataportMode, IpDataport, IpDataportsConfiguration,
     AidingSourceBitmask1, AidingSourceBitmask2,

@@ -1,7 +1,9 @@
 use super::PacketKind;
 use binrw::{binrw, BinRead, BinWrite};
-use num_enum::FromPrimitive;
+use bitflags::bitflags;
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
+use std::net::Ipv4Addr;
 
 /// Acknowledge result codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
@@ -55,33 +57,81 @@ pub struct BootMode {
 }
 
 /// Advanced Navigation device type
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum DeviceType {
-    #[default]
-    Unknown = 0,
     Spatial = 1,
+    ProductionSystem = 2,
+    Orientus = 3,
     SpatialFog = 4,
     SpatialDual = 5,
-    Orientus = 11,
+    Sublocus = 6,
+    SublocusDvl = 7,
+    SportsTracker = 8,
+    SublocusDvlRti = 9,
+    ObdiiOdometer = 10,
+    OrientusV3P = 11,
+    Ilu = 12,
     AirDataUnit = 13,
     Subsonus = 14,
+    UwbAnchor = 15,
     SpatialFogDual = 16,
     Motus = 17,
     GnssCompass = 19,
+    SubsonusIns = 20,
     SubsonusTag = 21,
     Poseidon = 22,
+    Navigo = 23,
+    BleDongle = 24,
+    SubsonusArray = 25,
     Certus = 26,
+    Aries = 27,
     BoreasD90 = 28,
+    SubsonusTagInterface = 29,
+    Hydrus = 30,
+    HydrusVision = 31,
+    HydrusTag = 32,
+    HydrusEsc = 33,
+    HydrusSystemControl = 34,
+    Boreas90Fpga = 35,
+    Boreas90Coil = 36,
+    PdrDagr = 37,
+    BoreasX90 = 38,
+    BoreasX90Fpga = 39,
+    Boreas70Coil = 40,
     BoreasD70 = 41,
+    Boreas70Fpga = 42,
     BoreasA90 = 43,
     BoreasA70 = 44,
+    Cgconnect = 45,
+    Reserved1 = 46,
+    Reserved2 = 47,
+    Reserved3 = 48,
     CertusMiniA = 49,
     CertusMiniN = 50,
     CertusMiniD = 51,
+    HydrusBattery = 52,
+    Bob = 53,
     BoreasD50 = 54,
+    Boreas50Fpga = 55,
     BoreasA50 = 56,
+    Boreas50Coil = 57,
+    Gl2MemsCalBoard = 58,
+    Lvs1 = 60,
+    LvsProcessor = 61,
+    LvsOpticalLand = 62,
+    Boreas50PdAssem = 63,
+    Boreas50SledAssem = 64,
+    Boreas50CoilAssem = 65,
+    Boreas50ImuAssem = 66,
+    Lvs2 = 67,
+    LvsOpticalAir = 68,
     AirDataUnit2 = 69,
+    Chimera1PassiveOptics = 70,
+    BoreasA90Nuwc = 71,
+    LoggingUnit = 9999,
+    #[num_enum(catch_all)]
+    Unknown(u32),
 }
 
 /// Device information packet (Packet ID 3, Length 24) - Read only
@@ -90,7 +140,7 @@ pub enum DeviceType {
 pub struct DeviceInformation {
     pub software_version: u32,
     #[br(map = |x: u32| DeviceType::from(x))]
-    #[bw(map = |x: &DeviceType| *x as u32)]
+    #[bw(map = |x: &DeviceType| u32::from(*x))]
     pub device_type: DeviceType,
     pub hardware_revision: u32,
     pub serial_number_1: u32,
@@ -151,6 +201,37 @@ pub struct SerialPortPassthrough {
     pub data: Vec<u8>,
 }
 
+/// Ethernet link mode
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum LinkMode {
+    Auto = 0,
+    Full100Mb = 1,
+    Half100Mb = 2,
+    Full10Mb = 3,
+    Half10Mb = 4,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+bitflags! {
+    /// DHCP mode flags
+    #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct DhcpMode: u8 {
+        const DHCP_ENABLED = 1 << 0;
+        const AUTOMATIC_DNS = 1 << 1;
+        /// Mask for the link mode in bits 2-4, decoded by [`Self::link_mode`]
+        const LINK_MODE_MASK = 0b0111 << Self::LINK_MODE_OFFSET;
+    }
+}
+
+impl DhcpMode {
+    const LINK_MODE_OFFSET: u32 = 2;
+
+    pub fn from_link_mode(mode: LinkMode) -> Self { Self::from_bits_retain(u8::from(mode) << Self::LINK_MODE_OFFSET) }
+    pub fn link_mode(&self) -> LinkMode { LinkMode::from(self.intersection(Self::LINK_MODE_MASK).bits() >> Self::LINK_MODE_OFFSET) }
+}
+
 /// IP configuration packet (Packet ID 11, Length 30) - Read/Write
 #[derive(Debug, Clone, PartialEq, BinRead, BinWrite, Serialize, Deserialize)]
 #[brw(little)]
@@ -158,11 +239,21 @@ pub struct IpConfiguration {
     #[br(map = |x: u8| x != 0)]
     #[bw(map = |x: &bool| *x as u8)]
     pub permanent: bool,
-    pub dhcp_mode: u8,
-    pub ip_address: u32,
-    pub ip_netmask: u32,
-    pub ip_gateway: u32,
-    pub dns_server: u32,
+    #[br(map = DhcpMode::from_bits_retain)]
+    #[bw(map = |x: &DhcpMode| x.bits())]
+    pub dhcp_mode: DhcpMode,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_address: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_netmask: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub ip_gateway: Ipv4Addr,
+    #[br(map = |x: u32| Ipv4Addr::from(x))]
+    #[bw(map = |x: &Ipv4Addr| u32::from(*x))]
+    pub dns_server: Ipv4Addr,
     pub boreas_serial_number_part_1: u32,
     pub boreas_serial_number_part_2: u32,
     pub boreas_serial_number_part_3: u32,
@@ -177,7 +268,7 @@ pub struct ExtendedDeviceInformation {
     pub software_version: u32,
     /// Device type identifier
     #[br(map = |x: u32| DeviceType::from(x))]
-    #[bw(map = |x: &DeviceType| *x as u32)]
+    #[bw(map = |x: &DeviceType| u32::from(*x))]
     pub device_id: DeviceType,
     /// Hardware revision
     pub hardware_revision: u32,
@@ -185,20 +276,32 @@ pub struct ExtendedDeviceInformation {
     pub serial_number: [u32; 3],
     /// Device sub-type
     pub device_sub_type: u32,
-    #[br(temp)]
-    #[bw(calc = [0u8; 8])]
-    _reserved: [u8; 8],
+    /// Bootloader software version
+    pub bootloader_software_version: u32,
+    /// Navigation filter version
+    pub navigation_filter_version: u32,
 }
 
 /// Subcomponent device identifier
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, FromPrimitive, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, IntoPrimitive, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum SubcomponentDeviceId {
-    #[default]
-    Unknown = 0,
     SpatialMemsImu = 5,
     EvoMemsImu = 17,
     Aries = 27,
+    Boreas90Fpga = 35,
+    Boreas90Coil = 36,
+    BoreasX90Fpga = 39,
+    Boreas70Coil = 40,
+    Boreas70Fpga = 42,
+    Boreas50Fpga = 55,
+    Boreas50Coil = 57,
+    Boreas50PdAssem = 63,
+    Boreas50SledAssem = 64,
+    Boreas50CoilAssem = 65,
+    Boreas50ImuAssem = 66,
+    #[num_enum(catch_all)]
+    Unknown(u32),
 }
 
 /// Single subcomponent entry within SubcomponentInformation
@@ -209,7 +312,7 @@ pub struct SubcomponentEntry {
     pub software_version: u32,
     /// Subcomponent device identifier
     #[br(map = |x: u32| SubcomponentDeviceId::from(x))]
-    #[bw(map = |x: &SubcomponentDeviceId| *x as u32)]
+    #[bw(map = |x: &SubcomponentDeviceId| u32::from(*x))]
     pub device_id: SubcomponentDeviceId,
     /// Subcomponent hardware revision
     pub hardware_revision: u32,
@@ -224,6 +327,22 @@ pub struct SubcomponentInformation {
     #[br(parse_with = binrw::helpers::until_eof)]
     #[bw(write_with = super::write_vec)]
     pub subcomponents: Vec<SubcomponentEntry>,
+}
+
+/// Subcomponent update status packet (Packet ID 15, Length 8) - Read only
+#[binrw]
+#[brw(little)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SubcomponentUpdateStatus {
+    /// Boot mode, in the encoding of the boot mode packet
+    pub boot_mode: u8,
+    /// Number of subcomponents being updated. Zero means no update is in progress.
+    pub number_subcomponents_updating: u8,
+    /// Progress of the update in percent
+    pub percent_complete: u8,
+    #[br(temp)]
+    #[bw(calc = [0u8; 5])]
+    _reserved: [u8; 5],
 }
 
 #[cfg(test)]
@@ -306,11 +425,11 @@ mod tests {
     fn test_ip_configuration_round_trip() {
         let ip = IpConfiguration {
             permanent: true,
-            dhcp_mode: 0,
-            ip_address: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 100)),
-            ip_netmask: u32::from(std::net::Ipv4Addr::new(255, 255, 255, 0)),
-            ip_gateway: u32::from(std::net::Ipv4Addr::new(192, 168, 1, 1)),
-            dns_server: u32::from(std::net::Ipv4Addr::new(8, 8, 8, 8)),
+            dhcp_mode: DhcpMode::empty(),
+            ip_address: Ipv4Addr::new(192, 168, 1, 100),
+            ip_netmask: Ipv4Addr::new(255, 255, 255, 0),
+            ip_gateway: Ipv4Addr::new(192, 168, 1, 1),
+            dns_server: Ipv4Addr::new(8, 8, 8, 8),
             boreas_serial_number_part_1: 123456,
             boreas_serial_number_part_2: 789012,
             boreas_serial_number_part_3: 345678,

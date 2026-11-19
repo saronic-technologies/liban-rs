@@ -76,10 +76,24 @@ where
     data.iter().try_for_each(|item| item.write_options(writer, endian, ()))
 }
 
+/// Decodes a fixed-length ASCII field that the device pads with zero bytes.
+pub(crate) fn ascii_from_padded<const N: usize>(bytes: [u8; N]) -> String {
+    let len = bytes.iter().position(|&b| b == 0).unwrap_or(N);
+    String::from_utf8_lossy(&bytes[..len]).into_owned()
+}
+
+/// Encodes text into a fixed-length field, truncated to `N` bytes and padded with zero bytes.
+pub(crate) fn padded_from_ascii<const N: usize>(text: &str) -> [u8; N] {
+    let mut bytes = [0u8; N];
+    let len = text.len().min(N);
+    bytes[..len].copy_from_slice(&text.as_bytes()[..len]);
+    bytes
+}
+
 // Import packet types from their respective modules
 use system::{Acknowledge, BootMode, DeviceInformation, ExtendedDeviceInformation,
             IpConfiguration, Request, Reset, RestoreFactorySettings, SerialPortPassthrough,
-            SubcomponentInformation};
+            SubcomponentInformation, SubcomponentUpdateStatus};
 #[allow(deprecated)]
 use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, VelocityStdDev,
             EulerOrientationStdDev, QuaternionOrientationStdDev,
@@ -98,12 +112,12 @@ use state::{SystemState, UnixTime, FormattedTime, Status, PositionStdDev, Veloci
             GnssReceiverInformation, ZeroAngularVelocity, SensorTemperature, SystemTemperature,
             VesselMotion,
             AutomaticMagneticCalibrationStatus, ExternalSvs,
-            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus};
+            GnssPositionVelocityTime, GnssOrientation, AidingSourceStatus, Biases, FpgaStatus};
 use config::{AidingSourceConfiguration1, AidingSourceConfiguration2,
             BaudRates, CanConfiguration, DualAntennaConfiguration, FilterOptions,
             GnssConfiguration, GpioConfiguration, GpioInputConfiguration, GpioOutputConfiguration,
             InstallationAlignment, IpDataportsConfiguration, OdometerConfiguration,
-            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets,
+            PacketTimerPeriod, PacketsPeriod, ReferencePointOffsets, SensorRanges,
             SetZeroOrientationAlignment, UserData};
 
 macro_rules! define_packets {
@@ -215,7 +229,7 @@ macro_rules! define_packets {
 }
 
 define_packets!(
-    // System Packets (0-14)
+    // System Packets (0-15)
     Acknowledge => 0, Fixed(4),
     Request => 1, Fixed(1),
     BootMode => 2, Fixed(1),
@@ -226,6 +240,7 @@ define_packets!(
     IpConfiguration => 11, Fixed(30),
     ExtendedDeviceInformation => 13, Fixed(36),
     SubcomponentInformation => 14, Variable,
+    SubcomponentUpdateStatus => 15, Fixed(8),
 
     // State Packets (20-95)
     SystemState => 20, Fixed(100),
@@ -273,6 +288,7 @@ define_packets!(
     NorthSeekingInitialisationStatus => 71, Fixed(28),
     GimbalState => 72, Fixed(8),
     Automotive => 73, Fixed(24),
+    Biases => 74, Fixed(85),
     ExternalMagnetometers => 75, Fixed(17),
     ZeroAngularVelocity => 83, Fixed(8),
     ExtendedSatellites => 84, Variable,
@@ -285,10 +301,14 @@ define_packets!(
     GnssOrientation => 93, Fixed(36),
     AidingSourceStatus => 95, Fixed(64),
 
+    // FOG Status Packets (178)
+    FpgaStatus => 178, Fixed(24),
+
     // Configuration Packets (180-208)
     PacketTimerPeriod => 180, Fixed(4),
     PacketsPeriod => 181, Variable,
     BaudRates => 182, Fixed(17),
+    SensorRanges => 184, Fixed(4),
     InstallationAlignment => 185, Fixed(73),
     FilterOptions => 186, Fixed(17),
     GpioConfiguration => 188, Fixed(13),
@@ -376,6 +396,7 @@ impl Packet {
             Packet::GnssPositionVelocityTime(_) | Packet::GnssOrientation(_) |
             Packet::AidingSourceStatus(_) |
             Packet::PacketTimerPeriod(_) | Packet::PacketsPeriod(_) |
+            Packet::SensorRanges(_) |
             Packet::InstallationAlignment(_) | Packet::FilterOptions(_) |
             Packet::GpioConfiguration(_) |
             Packet::OdometerConfiguration(_) | Packet::SetZeroOrientationAlignment(_) |
